@@ -27,7 +27,7 @@ try{
       }
     });
 
-    let mysql_connection = await mysql.createConnection(config.mysql);
+    let sql_conn = await mysql.createConnection(config.mysql);
 
     app.use(express.static("public_html"));
 
