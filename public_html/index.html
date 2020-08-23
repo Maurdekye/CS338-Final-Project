@@ -4,9 +4,23 @@
   <title>Test Page</title>
 </head>
 <body>
+  <input type="button" id="logout" value="logout">
+  <p id="logout_feedback"></p>
   <center>
     <h1>THIS IS THE TEST PAGE</h1>
-    do you like ?
+    <p>do you like ?</p>
+    <p><a href="/login">Login here</a></p>
   </center>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    $("#logout").onclick = async () => {
+      let response = await (await fetch("/api/logout", {
+        method: "POST"
+      })).json();
+
+      $("#logout_feedback").innerHTML = response.message;
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login Page</title>
+</head>
+<body>
+  <center>
+    <h1>Login Here</h1>
+    <form id="login_form">
+      <label>Username: <input type="text" id="username" required></label><br>
+      <label>Password: <input type="password" id="password" required></label><br>
+      <input type="submit" id="login" value="Login">
+    </form>
+    <p id="login_feedback"></p>
+    Don't have an account? <a href="/register">Register Now</a>
+  </center>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    $("#login_form").onsubmit = () => {
+      (async () => {
+        let response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: $("#username").value,
+            password: $("#password").value
+          })
+        });
+        let result = await response.json();
+        console.log(result);
+        if (result.success) {
+          window.location.href = "/";
+        } else {
+          $("#login_feedback").innerHTML = result.message;
+        }
+      })();
+      return false;
+    };
+  </script>
+</body>
+</html>

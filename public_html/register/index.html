@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register Page</title>
+</head>
+<body>
+  <center>
+    <h1>Register an Account</h1>
+    <form id="register_form">
+      <label>Username: <input type="text" id="username" required></label><br>
+      <label>Email Address: <input type="email" id="email" required></label><br>
+      <label>Password: <input type="password" id="password" required></label><br>
+      <label>Re-enter Password: <input type="password" id="reenter_password" required></label><br>
+      <input type="submit" value="Register">
+    </form>
+    <p id="registration_feedback"></p>
+  </center>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    $("#register_form").onsubmit = () => {
+      if ($("#password").value !== $("#reenter_password").value) {
+        $("#registration_feedback").innerHTML = "Passwords do not match!";
+      } else {
+        (async () => {
+          let response = await fetch("/api/register", {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username: $("#username").value,
+              email: $("#email").value,
+              password: $("#password").value
+            })
+          });
+          let result = await response.json();
+          console.log(result);
+          if (result.success) {
+            window.location.href = "/";
+          } else {
+            $("#registration_feedback").innerHTML = result.message;
+          }
+        })();
+      }
+      return false;
+    };
+  </script>
+</body>
+</html>
