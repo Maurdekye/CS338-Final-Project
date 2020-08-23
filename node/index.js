@@ -18,6 +18,8 @@ async function get_config(conf_path, default_config) {
 
 const legalAnonymousPaths = [
   "/",
+  "/navbar.htm",
+  "/navbar.js",
   "/login/",
   "/register/",
   "/favicon.ico"
