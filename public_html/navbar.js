@@ -2,7 +2,7 @@ var $ = document.querySelector.bind(document);
 
 (async () => {
   let navbar_content = await (await fetch("/navbar.htm")).text();
-  document.querySelector("div[data-navbar]").innerHTML = navbar_content;
+  $("div[data-navbar]").innerHTML = navbar_content;
 
   let response = await (await fetch("/api/getsession", {method: "POST"})).json();
   if (response.success) {

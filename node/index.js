@@ -67,7 +67,7 @@ try{
 
     app.use(express.static(config.static_path));
 
-    // endpoints
+    // API endpoints
 
     app.post("/api/register", jsonParser, async (req, res) => {
       let result = await model.registerNewAccount(sql_conn, req.body);
@@ -90,7 +90,9 @@ try{
     app.post("/api/getsession", jsonParser, async (req, res) => {
       let result = await model.getSession(sql_conn, req.ip);
       if (result.success) {
-        result = await model.getSessionUser(sql_conn, result.id)
+        let newResult = await model.getSessionUser(sql_conn, result.id)
+        result.sessionid = newResult.id;
+        result = newResult;
       }
       res.send(JSON.stringify(result));
     });
@@ -110,13 +112,38 @@ try{
           message: "You are already logged out"
         }));
       }
-    })
+    });
+
+    app.post("/api/changepassword", jsonParser, async (req, res) => {
+      let result = await model.getSession(sql_conn, req.ip);
+      if (result.success) {
+        result = await model.getSessionUser(sql_conn, result.id);
+        if (result.success) {
+          let username = result.username;
+          if (result.userid !== req.body.userid) {
+            res.send(JSON.stringify({
+              success: false,
+              code: "SessionMismatch",
+              message: "User-session mismatch during password change request, possible account breach attempt detected"
+            }));
+            return;
+          } else {
+            let result = await model.changePassword(sql_conn, req.body);
+            if (result.success) {
+              console.log(`User '${username}' changed their password`);
+            }
+          }
+        }
+      }
+      res.send(JSON.stringify(result));
+    });
 
     // end of endpoints
 
     app.listen(config.port, () => {
       console.log(`Server listening on port ${config.port}`);
     });
+
   })();
 } catch (err) {
   console.log(err);

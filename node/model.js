@@ -68,11 +68,32 @@ var thisModule = {
           success: false,
           code: "Failure",
           message: `Session Retrieval Unsuccessful`,
-          error: e
+          error: "" + e
         }
       }
     }
 
+  },
+
+  getUser: async (sql, userid) => {
+    let getUserQuery = `SELECT username, email, password FROM users WHERE userid = ${userid};`;
+    let response = await sql.query(getUserQuery);
+    if (response.length === 0) {
+      return {
+        success: false,
+        code: "NoUser",
+        message: `No user was found with id ${userid}`
+      }
+    } else {
+      return {
+        success: true,
+        code: "Success",
+        message: `Found user ${response[0].username}`,
+        username: response[0].username,
+        email: response[0].email,
+        password: response[0].password
+      }
+    }
   },
 
   /*
@@ -117,7 +138,7 @@ var thisModule = {
           success: false,
           code: "Failure",
           message: `Registration Unsuccessful`,
-          error: e
+          error: "" + e
         }
       }
     }
@@ -171,7 +192,7 @@ var thisModule = {
           success: false,
           code: "Failure",
           message: `Failed to create new session.`,
-          error: e
+          error: "" + e
         }
       }
     }
@@ -192,8 +213,28 @@ var thisModule = {
         success: false,
         code: "Failure",
         message: "Failed to log out",
-        error: e
+        error: "" + e
       }
+    }
+  },
+
+  changePassword: async (sql, changePasswordData) => {
+    let changePasswordUpdate = `UPDATE users SET password = '${changePasswordData.new_password}' WHERE id = ${changePasswordData.userid};`;
+    try {
+      await sql.query(changePasswordUpdate);
+      return {
+        success: true,
+        code: "Success",
+        message: "Successfully changed password",
+      }    
+    } catch (e) {
+      console.log(e);
+      return {
+        success: false,
+        code: "Failure",
+        message: "Failed to changed password",
+        error: "" + e
+      }    
     }
   }
 }

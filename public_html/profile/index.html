@@ -8,7 +8,53 @@
   <center>
     <h1>Profile Page</h1>
     Hello!
+    <div id="profile_content"></div>
+    <div>
+      Change Password:
+      <form id="change_password">
+        <label>New Password: <input type="password" id="password" required></label><br>
+        <label>Reenter New Password: <input type="password" id="reenter_password" required></label><br>
+        <input type="submit" value="Change Password">
+      </form>
+      <p id="password_change_feedback"></p>
+    </div>
   </center>
   <script src="/navbar.js"></script>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    (async () => {
+      let response = await (await fetch("/api/getsession", {method: "POST"})).json();
+      $("#profile_content").innerHTML = `
+        <p>Your username is '${response.username}'</p>
+        <p>Your email address is ${response.email}</p>
+      `;
+    })();
+
+    $("#change_password").onsubmit = async e => {
+      e.preventDefault(true);
+      if ($("#password").value !== $("#reenter_password").value) {
+        $("#password_change_feedback").innerHTML = "Passwords do not match!";
+      } else {
+        let sessiondata = await (await fetch("/api/getsession", {method: "POST"})).json();
+        if (!sessiondata.success) {
+          $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
+        } else {
+          let response = await (await fetch("/api/changepassword", {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userid: sessiondata.userid,
+              new_password: $("#password").value
+            })
+          })).json()
+          $("#password_change_feedback").innerHTML = response.message;
+        }
+      }
+    }
+
+  </script>
 </body>
 </html>
