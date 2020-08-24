@@ -4,15 +4,15 @@ const fs = require('fs').promises;
 const mysql = require('promise-mysql');
 const model = require('./model.js')
 
-async function get_config(conf_path, default_config) {
-  let config = JSON.parse(JSON.stringify(default_config));
+async function getConfig(confPath, defaultConfig) {
+  let config = JSON.parse(JSON.stringify(defaultConfig));
   try {
-    let raw_cfg = await fs.readFile(conf_path);
-    let loaded_cfg = JSON.parse(raw_cfg);
-    Object.assign(config, loaded_cfg);
+    let rawCfg = await fs.readFile(confPath);
+    let loadedCfg = JSON.parse(rawCfg);
+    Object.assign(config, loadedCfg);
   } catch(e) {}
 
-  await fs.writeFile(conf_path, JSON.stringify(config, null, 4));
+  await fs.writeFile(confPath, JSON.stringify(config, null, 4));
   return config;
 }
 
@@ -25,36 +25,62 @@ const legalAnonymousPaths = [
   "/favicon.ico"
 ]
 
+async function matchSessionUser(sql, ip, userid) {
+  let result = await model.getSession(sql, ip);
+  if (result.success) {
+    result = await model.getSessionUser(sql, result.id);
+    if (result.success && result.userid !== userid) {
+      return {
+        success: false,
+        code: "SessionMismatch",
+        message: "User-session mismatch during password change request, possible account breach attempt detected"
+      }
+    }
+  }
+  return result;
+}
+
 try{
   (async () => {
 
     // initialization
 
     const app = express();
-    const config = await get_config('./config.json', {
+    const config = await getConfig('./config.json', {
       port: 8080,
-      static_path: "public_html",
+      staticPath: "public_html",
       mysql: {
         host: 'localhost',
         user: 'user',
         password: 'password',
         database: 'database'
       },
-      sessionLength: 86400
+      sessionLength: 86400,
+      infectionRetropropogation: {
+        "SYMPTOMATIC": 5 * 86400,
+        "INFECTED": 14 * 86400,
+        "RECOVERING": 5 * 86400
+      },
+      infectionPropogationRisk: {
+        "SYMPTOMATIC": "LOW",
+        "INFECTED": "HIGH",
+        "RECOVERING": "LOW"
+      },
+      visitFudgeTime: 86400
     });
     let jsonParser = bodyParser.json();
 
-    let sql_conn = await mysql.createConnection(config.mysql);
+    let sqlConn = await mysql.createConnection(config.mysql);
 
     // middleware installation
 
     app.use((req, res, next) => {
-      console.log(`[${req.ip}] ${req.method} ${req.path}`);
+      console.log(`${new Date().toISOString()} [${req.ip}] ${req.method} ${req.path}`);
       next();
     })
 
     app.use(async (req, res, next) => {
-      let sessionResult = await model.getSession(sql_conn, req.ip);
+      let sessionResult = await model.getSession(sqlConn, req.ip);
       if (sessionResult.success) {
         req.sessionToken = sessionResult.id;
       }
@@ -65,15 +91,15 @@ try{
       }
     });
 
-    app.use(express.static(config.static_path));
+    app.use(express.static(config.staticPath));
 
     // API endpoints
 
     app.post("/api/register", jsonParser, async (req, res) => {
-      let result = await model.registerNewAccount(sql_conn, req.body);
+      let result = await model.registerNewAccount(sqlConn, req.body);
       if (result.success) {
         console.log(`Registered new account with username '${req.body.username}'`);
-        result.loginAttempt = await model.login(sql_conn, req.body, req.ip, config.sessionLength);
+        result.loginAttempt = await model.login(sqlConn, req.body, req.ip, config.sessionLength);
         if (result.loginAttempt.success)
           console.log(`User '${req.body.username}' Logged in`);
       }
@@ -81,16 +107,16 @@ try{
     });
 
     app.post("/api/login", jsonParser, async (req, res) => {
-      let result = await model.login(sql_conn, req.body, req.ip, config.sessionLength);
+      let result = await model.login(sqlConn, req.body, req.ip, config.sessionLength);
       res.send(JSON.stringify(result));
       if (result.success) 
         console.log(`User '${req.body.username}' Logged in`);
     });
 
     app.post("/api/getsession", jsonParser, async (req, res) => {
-      let result = await model.getSession(sql_conn, req.ip);
+      let result = await model.getSession(sqlConn, req.ip);
       if (result.success) {
-        let newResult = await model.getSessionUser(sql_conn, result.id)
+        let newResult = await model.getSessionUser(sqlConn, result.id)
         result.sessionid = newResult.id;
         result = newResult;
       }
@@ -98,10 +124,10 @@ try{
     });
 
     app.post("/api/logout", async (req, res) => {
-      let result = await model.getSession(sql_conn, req.ip);
+      let result = await model.getSession(sqlConn, req.ip);
       if (result.success) {
-        let userdata = await model.getSessionUser(sql_conn, result.id);
-        result = await model.logout(sql_conn, userdata.userid);
+        let userdata = await model.getSessionUser(sqlConn, result.id);
+        result = await model.logout(sqlConn, userdata.userid);
         res.send(JSON.stringify(result));
         if (result.success) 
           console.log(`User '${userdata.username}' Logged out`);
@@ -115,22 +141,37 @@ try{
     });
 
     app.post("/api/changepassword", jsonParser, async (req, res) => {
-      let result = await model.getSession(sql_conn, req.ip);
+      let result = await matchSessionUser(sqlConn, req.ip, req.body.userid);
       if (result.success) {
-        result = await model.getSessionUser(sql_conn, result.id);
+        let username = result.username;
+        result = await model.changePassword(sqlConn, req.body);
         if (result.success) {
-          let username = result.username;
-          if (result.userid !== req.body.userid) {
-            res.send(JSON.stringify({
-              success: false,
-              code: "SessionMismatch",
-              message: "User-session mismatch during password change request, possible account breach attempt detected"
-            }));
-            return;
-          } else {
-            let result = await model.changePassword(sql_conn, req.body);
-            if (result.success) {
-              console.log(`User '${username}' changed their password`);
+          console.log(`User '${username}' changed their password`);
+        }
+      }
+      res.send(JSON.stringify(result));
+    });
+
+    app.post("/api/updatestatus", jsonParser, async (req, res) => {
+      let result = await matchSessionUser(sqlConn, req.ip, req.body.userid);
+      if (result.success) {
+        if (result.status == req.body.status) {
+          result = {
+            success: true,
+            code: "StatusUnchanged",
+            message: `Your status is already set to ${result.status}`
+          };
+        } else {
+          let userdata = result;
+          result = await model.changeStatus(sqlConn, req.body);
+          if (result.success) {
+            console.log(`User ${userdata.username} has updated their infection status to ${req.body.status}`);
+            if (config.infectionRetropropogation.hasOwnProperty(req.body.status)) {
+              result = await model.contagionRetroPropogation(sqlConn, {
+                userid: userdata.userid,
+                retroTime: config.infectionRetropropogation[req.body.status],
+                contagionRisk: config.infectionPropogationRisk[req.body.status]
+              });
             }
           }
         }
