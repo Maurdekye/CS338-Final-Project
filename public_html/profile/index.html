@@ -47,10 +47,10 @@
     (async () => {
       let response = await (await fetch("/api/getsession", {method: "POST"})).json();
       $("#profile_content").innerHTML = `
-        <p>Your username is '${response.username}'</p>
-        <p>Your email address is ${response.email}</p>
+        <p>Your username is '${response.session.user.username}'</p>
+        <p>Your email address is ${response.session.user.email}</p>
       `;
-      $("#status_display").innerHTML = displayStatus[response.status];
+      $("#status_display").innerHTML = displayStatus[response.session.user.status];
     })();
 
     $("#change_password").onsubmit = async e => {
@@ -58,30 +58,29 @@
       if ($("#password").value !== $("#reenter_password").value) {
         $("#password_change_feedback").innerHTML = "Passwords do not match!";
       } else {
-        let sessiondata = await (await fetch("/api/getsession", {method: "POST"})).json();
-        if (!sessiondata.success) {
-          $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
-        } else {
-          let response = await (await fetch("/api/changepassword", {
+        let response = await (await fetch("/api/getsession", {method: "POST"})).json();
+        let session = response.session;
+        if (session.type === "User") {
+          response = await (await fetch("/api/changepassword", {
             method: "POST",
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              userid: sessiondata.userid,
               newPassword: $("#password").value
             })
-          })).json()
-          $("#password_change_feedback").innerHTML = response.message;
+          })).json();
+          $("#password_change_feedback").innerHTML = response.message
+        } else if (session.type === "Anonymous") {
+          $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
         }
       }
     };
 
     $("#update_status").onclick = async () => {
-      let sessiondata = await (await fetch("/api/getsession", {method: "POST"})).json();
-      if (!sessiondata.success) {
-        $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
-      } else {
+      let response = await (await fetch("/api/getsession", {method: "POST"})).json();
+      let session = response.session;
+      if (session.type === "User") {
         let select = $("#status_select");
         let response = await (await fetch("/api/updatestatus", {
           method: "POST",
@@ -89,18 +88,16 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            userid: sessiondata.userid,
             status: select.options[select.selectedIndex].value
           })
         })).json();
         if (response.success) {
-          console.log(response);
           $("#status_display").innerHTML = displayStatus[select.options[select.selectedIndex].value];
-        } else {
-          $("#password_change_feedback").innerHTML = response.message;
         }
+      } else if (session.type === "Anonymous")  {
+        $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
       }
-    };
+    }
   </script>
 </body>
 </html>

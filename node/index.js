@@ -25,20 +25,11 @@ const legalAnonymousPaths = [
   "/favicon.ico"
 ]
 
-async function matchSessionUser(sql, ip, userid) {
-  let result = await model.getSession(sql, ip);
-  if (result.success) {
-    result = await model.getSessionUser(sql, result.id);
-    if (result.success && result.userid !== userid) {
-      return {
-        success: false,
-        code: "SessionMismatch",
-        message: "User-session mismatch during password change request, possible account breach attempt detected"
-      }
-    }
-  }
-  return result;
-}
+const invalidSessionResponse = JSON.stringify({
+  success: false,
+  code: "InvalidSession",
+  message: "Session invalid; please log back in."
+});
 
 try{
   (async () => {
@@ -70,7 +61,7 @@ try{
     });
     let jsonParser = bodyParser.json();
 
-    let sqlConn = await mysql.createConnection(config.mysql);
+    let sql = await mysql.createConnection(config.mysql);
 
     // middleware installation
 
@@ -80,11 +71,25 @@ try{
     })
 
     app.use(async (req, res, next) => {
-      let sessionResult = await model.getSession(sqlConn, req.ip);
-      if (sessionResult.success) {
-        req.sessionToken = sessionResult.id;
+      let sessionResponse = await model.getSession(sql, req.ip);
+      req.session = {
+        type: "Anonymous"
       }
-      if (req.method == "GET" && !legalAnonymousPaths.includes(req.path) && !sessionResult.success) {
+      if (sessionResponse.success) {
+        let userDataResponse = await model.getSessionUser(sql, sessionResponse.id);
+        req.session.type = "User";
+        req.session.id = sessionResponse.id;
+        if (userDataResponse.success) {
+          req.session.user = {
+            id: userDataResponse.userid,
+            username: userDataResponse.username,
+            password: userDataResponse.password,
+            email: userDataResponse.email,
+            status: userDataResponse.status
+          };
+        }
+      }
+      if (req.method == "GET" && !legalAnonymousPaths.includes(req.path) && req.session.type === "Anonymous") {
         res.redirect("/login/");
       } else {
         next();
@@ -96,10 +101,17 @@ try{
     // API endpoints
 
     app.post("/api/register", jsonParser, async (req, res) => {
-      let result = await model.registerNewAccount(sqlConn, req.body);
+      let result = await model.registerNewAccount(sql, {
+        username: req.body.username,
+        password: req.body.password,
+        email: req.body.email
+      });
       if (result.success) {
         console.log(`Registered new account with username '${req.body.username}'`);
-        result.loginAttempt = await model.login(sqlConn, req.body, req.ip, config.sessionLength);
+        result.loginAttempt = await model.login(sql, {
+          username: req.body.username,
+          password: req.body.password
+        }, req.ip, config.sessionLength);
         if (result.loginAttempt.success)
           console.log(`User '${req.body.username}' Logged in`);
       }
@@ -107,31 +119,34 @@ try{
     });
 
     app.post("/api/login", jsonParser, async (req, res) => {
-      let result = await model.login(sqlConn, req.body, req.ip, config.sessionLength);
+      let result = await model.login(sql, {
+          username: req.body.username,
+          password: req.body.password
+      }, req.ip, config.sessionLength);
       res.send(JSON.stringify(result));
       if (result.success) 
         console.log(`User '${req.body.username}' Logged in`);
     });
 
     app.post("/api/getsession", jsonParser, async (req, res) => {
-      let result = await model.getSession(sqlConn, req.ip);
-      if (result.success) {
-        let newResult = await model.getSessionUser(sqlConn, result.id)
-        result.sessionid = newResult.id;
-        result = newResult;
-      }
-      res.send(JSON.stringify(result));
+      let session = JSON.parse(JSON.stringify(req.session));
+      if (session.type === "User")
+        delete session.user.password;
+      res.send(JSON.stringify({
+        success: true,
+        code: "Success",
+        message: "Successfully fetched session information",
+        session: session
+      }));
     });
 
     app.post("/api/logout", async (req, res) => {
-      let result = await model.getSession(sqlConn, req.ip);
-      if (result.success) {
-        let userdata = await model.getSessionUser(sqlConn, result.id);
-        result = await model.logout(sqlConn, userdata.userid);
+      if (req.session.type === "User") {
+        result = await model.logout(sql, req.session.user.id);
         res.send(JSON.stringify(result));
         if (result.success) 
-          console.log(`User '${userdata.username}' Logged out`);
-      } else {
+          console.log(`User '${req.session.user.username}' Logged out`);
+      } else if (req.session.type === "Anonymous") {
         res.send(JSON.stringify({
           success: false,
           code: "LoggedOut",
@@ -141,43 +156,58 @@ try{
     });
 
     app.post("/api/changepassword", jsonParser, async (req, res) => {
-      let result = await matchSessionUser(sqlConn, req.ip, req.body.userid);
-      if (result.success) {
-        let username = result.username;
-        result = await model.changePassword(sqlConn, req.body);
+      if (req.session.type === "User") {
+        result = await model.changePassword(sql, {
+          userid: req.session.user.id,
+          newPassword: req.body.newPassword
+        });
         if (result.success) {
-          console.log(`User '${username}' changed their password`);
+          console.log(`User '${req.session.user.username}' changed their password`);
         }
+        res.send(JSON.stringify(result));
+      } else if (req.session.type === "Anonymous") {
+        res.send(invalidSessionResponse);
       }
-      res.send(JSON.stringify(result));
     });
 
     app.post("/api/updatestatus", jsonParser, async (req, res) => {
-      let result = await matchSessionUser(sqlConn, req.ip, req.body.userid);
-      if (result.success) {
-        if (result.status == req.body.status) {
-          result = {
+      if (req.session.type === "User") {
+        if (req.session.user.status == req.body.status) {
+          res.send(JSON.stringify({
             success: true,
             code: "StatusUnchanged",
-            message: `Your status is already set to ${result.status}`
-          };
+            message: `Your status is already set to ${req.session.user.status}`
+          }));
         } else {
-          let userdata = result;
-          result = await model.changeStatus(sqlConn, req.body);
+          let result = await model.changeStatus(sql, {
+            userid: req.session.user.id,
+            status: req.body.status 
+          });
           if (result.success) {
-            console.log(`User ${userdata.username} has updated their infection status to ${req.body.status}`);
+            console.log(`User ${req.session.user.username} has updated their infection status to ${req.body.status}`);
             if (config.infectionRetropropogation.hasOwnProperty(req.body.status)) {
-              result = await model.contagionRetroPropogation(sqlConn, {
-                userid: userdata.userid,
+              result = await model.contagionRetroPropogation(sql, {
+                userid: req.session.user.id,
                 retroTime: config.infectionRetropropogation[req.body.status],
                 contagionRisk: config.infectionPropogationRisk[req.body.status]
               });
             }
           }
+          res.send(JSON.stringify(result));
         }
+      } else if (req.session.type === "Anonymous") {
+        res.send(invalidSessionResponse);
       }
-      res.send(JSON.stringify(result));
     });
+
+    // app.post("/api/getlocations", async (req, res) => {
+    //   if (req.session.type === "User") {
+    //     let response = await model.getLocations(sql, req.session.user.id);
+
+    //   } else if (req.session.type === "Anonymous") {
+    //     res.send(invalidSessionResponse);
+    //   }
+    // });
 
     // end of endpoints
 

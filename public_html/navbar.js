@@ -5,9 +5,10 @@ var $ = document.querySelector.bind(document);
   $("div[data-navbar]").innerHTML = navbar_content;
 
   let response = await (await fetch("/api/getsession", {method: "POST"})).json();
-  if (response.success) {
+  let session = response.session;
+  if (session.type === "User") {
     $("#profile_link").href = "/profile/";
-    $("#profile_link").innerHTML = `My Profile (${response.username})`;
+    $("#profile_link").innerHTML = `My Profile (${session.user.username})`;
 
     $("#logout_container").innerHTML = "<a href='#' onclick='logout()'>Logout</a>";
   }

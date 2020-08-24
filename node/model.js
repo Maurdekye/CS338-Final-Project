@@ -54,7 +54,7 @@ var thisModule = {
           message: `No session was found with id ${sessionId}`
         }
       } else {
-        let getSessionDetailsQuery = `SELECT id, username, email, status FROM users WHERE id = (SELECT userid FROM sessions WHERE id = ${sessionId});`;
+        let getSessionDetailsQuery = `SELECT id, username, password, email, status FROM users WHERE id = (SELECT userid FROM sessions WHERE id = ${sessionId});`;
         let result = await sql.query(getSessionDetailsQuery);
         if (result.length === 0) {
           return {
@@ -69,6 +69,7 @@ var thisModule = {
             message: `Session Retrieval Successfull`,
             userid: result[0].id,
             username: result[0].username,
+            password: result[0].password,
             email: result[0].email,
             status: result[0].status
           }
