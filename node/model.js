@@ -14,11 +14,12 @@ var thisModule = {
       }
   */
   getSession: async (sql, ip) => {
-    let query = `SELECT id 
-                 FROM sessions 
-                 WHERE 
-                  ip = '${ip}' 
-                  AND sessionExpiry > UNIX_TIMESTAMP();`;
+    let query = `
+      SELECT id 
+      FROM sessions 
+      WHERE 
+        ip = '${ip}' 
+        AND sessionExpiry > UNIX_TIMESTAMP();`;
     try {
       let result = await sql.query(query);
       if (result.length === 0) {
@@ -48,9 +49,10 @@ var thisModule = {
   },
 
   getSessionUser: async (sql, sessionId) => {
-    let checkSessionExistsQuery = `SELECT id 
-                                   FROM sessions 
-                                   WHERE id = ${sessionId};`;
+    let checkSessionExistsQuery = `
+      SELECT id 
+      FROM sessions 
+      WHERE id = ${sessionId};`;
     try {
       let result = await sql.query(checkSessionExistsQuery);
       if (result.length === 0) {
@@ -60,18 +62,18 @@ var thisModule = {
           message: `No session was found with id ${sessionId}`
         }
       } else {
-        let getSessionDetailsQuery = `SELECT 
-                                        id, 
-                                        username, 
-                                        password, 
-                                        email, 
-                                        status 
-                                      FROM users 
-                                      WHERE id = (
-                                        SELECT userid 
-                                        FROM sessions 
-                                        WHERE id = ${sessionId}
-                                      );`;
+        let getSessionDetailsQuery = `
+          SELECT 
+            id, 
+            username, 
+            password, 
+            email, 
+            status 
+          FROM users 
+          WHERE id = (
+            SELECT userid 
+            FROM sessions 
+            WHERE id = ${sessionId});`;
         let result = await sql.query(getSessionDetailsQuery);
         if (result.length === 0) {
           return {
@@ -105,13 +107,14 @@ var thisModule = {
   },
 
   getUser: async (sql, userid) => {
-    let getUserQuery = `SELECT 
-                          username, 
-                          email, 
-                          password, 
-                          status 
-                        FROM users 
-                        WHERE userid = ${userid};`;
+    let getUserQuery = `
+      SELECT 
+        username, 
+        email, 
+        password, 
+        status 
+      FROM users 
+      WHERE userid = ${userid};`;
     try {
       let response = await sql.query(getUserQuery);
       if (response.length === 0) {
@@ -161,9 +164,10 @@ var thisModule = {
       }
   */
   registerNewAccount: async (sql, registration) => {
-    let checkAccountNameQuery = `SELECT username 
-                                 FROM users 
-                                 WHERE username = '${registration.username}';`;
+    let checkAccountNameQuery = `
+      SELECT username 
+      FROM users
+      WHERE username = '${registration.username}';`;
     try {
       let result = await sql.query(checkAccountNameQuery);
       if (result.length > 0) {
@@ -173,20 +177,17 @@ var thisModule = {
           message: `Registration failed: an account with the username '${registration.username}' already exists`
         }
       } else {
-        let registrationUpdate = `INSERT INTO users 
-                                    (
-                                      username, 
-                                      password, 
-                                      email, 
-                                      status
-                                    ) 
-                                  VALUES 
-                                    (
-                                      '${registration.username}', 
-                                      '${registration.password}', 
-                                      '${registration.email}', 
-                                      'HEALTHY'
-                                    );`;
+        let registrationUpdate = `
+          INSERT INTO users (
+            username, 
+            password, 
+            email, 
+            status) 
+          VALUES (
+            '${registration.username}', 
+            '${registration.password}', 
+            '${registration.email}', 
+            'HEALTHY');`;
         await sql.query(registrationUpdate);
         return {
           success: true,
@@ -224,11 +225,12 @@ var thisModule = {
       }
   */
   login: async (sql, account, ip, sessionLength) => {
-    let checkUserDetailsQuery = `SELECT 
-                                  id, 
-                                  password 
-                                 FROM users 
-                                 WHERE username = '${account.username}';`;
+    let checkUserDetailsQuery = `
+      SELECT 
+        id, 
+        password 
+      FROM users 
+      WHERE username = '${account.username}';`;
     try {
       let result = await sql.query(checkUserDetailsQuery);
       if (result.length === 0) {
@@ -244,21 +246,18 @@ var thisModule = {
           message: `The password you entered is incorrect.`
         }
       } else {
-        let createOrUpdateSession = `INSERT INTO sessions 
-                                     (
-                                      userid, 
-                                      ip, 
-                                      sessionExpiry
-                                     ) 
-                                     VALUES 
-                                     (
-                                      '${result[0].id}', 
-                                      '${ip}', 
-                                      UNIX_TIMESTAMP() + ${sessionLength}
-                                     ) 
-                                     ON DUPLICATE KEY UPDATE 
-                                      userid = VALUES(userid), 
-                                      sessionExpiry = VALUES(sessionExpiry);`;
+        let createOrUpdateSession = `
+          INSERT INTO sessions (
+            userid, 
+            ip, 
+            sessionExpiry) 
+          VALUES (
+            '${result[0].id}', 
+            '${ip}', 
+            UNIX_TIMESTAMP() + ${sessionLength}) 
+          ON DUPLICATE KEY UPDATE 
+            userid = VALUES(userid), 
+            sessionExpiry = VALUES(sessionExpiry);`;
         await sql.query(createOrUpdateSession);
         return {
           success: true,
@@ -278,8 +277,9 @@ var thisModule = {
   },
 
   logout: async (sql, userid) => {
-    let deleteSessionUpdate = `DELETE FROM sessions 
-                               WHERE userid = '${userid}';`;
+    let deleteSessionUpdate = `
+      DELETE FROM sessions 
+      WHERE userid = '${userid}';`;
     try {
       await sql.query(deleteSessionUpdate);
       return {
@@ -306,9 +306,10 @@ var thisModule = {
       }
   */
   changePassword: async (sql, changePasswordData) => {
-    let changePasswordUpdate = `UPDATE users 
-                                  SET password = '${changePasswordData.newPassword}' 
-                                  WHERE id = ${changePasswordData.userid};`;
+    let changePasswordUpdate = `
+      UPDATE users 
+        SET password = '${changePasswordData.newPassword}' 
+        WHERE id = ${changePasswordData.userid};`;
     try {
       await sql.query(changePasswordUpdate);
       return {
@@ -342,9 +343,10 @@ var thisModule = {
         message: "Given status is invalid. Valid statuses are HEALTHY, SYMPTOMATIC, INFECTED, RECOVERING, and HEALTHY-IMMUNE"
       }
     } else {
-      let statusUpdate = `UPDATE users 
-                            SET status = '${changeStatusData.status}' 
-                            WHERE id = ${changeStatusData.userid};`;
+      let statusUpdate = `
+        UPDATE users 
+          SET status = '${changeStatusData.status}' 
+          WHERE id = ${changeStatusData.userid};`;
       try {
         await sql.query(statusUpdate);
         return {
@@ -380,20 +382,22 @@ var thisModule = {
         message: "Given contagion risk is invalid. Valid risk values are LOW and HIGH"
       }
     } else {
-      let contagionRiskUpdate = `UPDATE visits 
-                                 SET contagionRisk = '${retroPropogationData.contagionRisk}' 
-                                 WHERE 
-                                  userid = ${retroPropogationData.userid} 
-                                  AND time < UNIX_TIMESTAMP() 
-                                  AND time > UNIX_TIMESTAMP() - ${retroPropogationData.retroTime};`;
+      let contagionRiskUpdate = `
+        UPDATE visits 
+        SET contagionRisk = '${retroPropogationData.contagionRisk}' 
+        WHERE 
+          userid = ${retroPropogationData.userid} 
+          AND time < UNIX_TIMESTAMP() 
+          AND time > UNIX_TIMESTAMP() - ${retroPropogationData.retroTime};`;
       if (retroPropogationData.contagionRisk == "LOW") {
-        contagionRiskUpdate = `UPDATE visits 
-                               SET contagionRisk = '${retroPropogationData.contagionRisk}' 
-                               WHERE 
-                                 userid = ${retroPropogationData.userid} 
-                                 AND time < UNIX_TIMESTAMP() 
-                                 AND time > UNIX_TIMESTAMP() - ${retroPropogationData.retroTime} 
-                                 AND contagionRisk != 'HIGH';`;
+        contagionRiskUpdate = `
+          UPDATE visits 
+          SET contagionRisk = '${retroPropogationData.contagionRisk}' 
+          WHERE 
+            userid = ${retroPropogationData.userid} 
+            AND time < UNIX_TIMESTAMP() 
+            AND time > UNIX_TIMESTAMP() - ${retroPropogationData.retroTime} 
+            AND contagionRisk != 'HIGH';`;
       }
       try {
         await sql.query(contagionRiskUpdate);
@@ -415,20 +419,21 @@ var thisModule = {
   },
 
   getVisits: async (sql, userid, maxVisits) => {
-    let getListOfVisitsQuery = `SELECT 
-                                  visits.id AS visitid, 
-                                  locations.id AS locationid, 
-                                  visits.time, 
-                                  visits.contagionRisk, 
-                                  locations.name, 
-                                  locations.address, 
-                                  locations.longitude,
-                                  locations.latitude 
-                                FROM visits 
-                                INNER JOIN locations ON visits.locationid = locations.id 
-                                WHERE visits.userid = ${userid} 
-                                ORDER BY visits.time DESC 
-                                LIMIT ${maxVisits};`;
+    let getListOfVisitsQuery = `
+      SELECT 
+        visits.id AS visitid, 
+        locations.id AS locationid, 
+        visits.time, 
+        visits.contagionRisk, 
+        locations.name, 
+        locations.address, 
+        locations.longitude,
+        locations.latitude 
+      FROM visits 
+      INNER JOIN locations ON visits.locationid = locations.id 
+      WHERE visits.userid = ${userid} 
+      ORDER BY visits.time DESC 
+      LIMIT ${maxVisits};`;
     try {
       let response = await sql.query(getListOfVisitsQuery);
       return {
@@ -442,7 +447,7 @@ var thisModule = {
           contagionRisk: row.contagionRisk,
           name: row.name,
           address: row.address,
-          coordinates: [row.longitude, row.latitude]
+          coordinates: {lat: row.latitude, lng: row.longitude}
         }))
       };
     } catch (e) {
@@ -457,27 +462,26 @@ var thisModule = {
   },
 
   getNearbyContagiousVisits: async (sql, userid, locationid, time, fudgeTime) => {
-    let getContagiousVisitsQuery = `SELECT 
-                                      visits.userid, 
-                                      users.username, 
-                                      locations.id AS locationid, 
-                                      visits.time, 
-                                      visits.contagionRisk, 
-                                      locations.name, 
-                                      locations.address,
-                                      locations.longitude,
-                                      locations.latitude
-                                    FROM visits 
-                                    INNER JOIN locations ON visits.locationid = locations.id 
-                                    INNER JOIN users ON visits.userid = users.id 
-                                    WHERE 
-                                      (
-                                        visits.contagionRisk = "LOW" 
-                                        OR visits.contagionRisk = "HIGH"
-                                      )
-                                      AND visits.userid != ${userid} 
-                                      AND visits.locationid = ${locationid}
-                                      AND ABS(visits.time - ${time}) < ${fudgeTime};`
+    let getContagiousVisitsQuery = `
+      SELECT 
+        visits.userid, 
+        users.username, 
+        locations.id AS locationid, 
+        visits.time, 
+        visits.contagionRisk, 
+        locations.name, 
+        locations.address,
+        locations.longitude,
+        locations.latitude
+      FROM visits 
+      INNER JOIN locations ON visits.locationid = locations.id 
+      INNER JOIN users ON visits.userid = users.id 
+      WHERE 
+        (visits.contagionRisk = "LOW" 
+        OR visits.contagionRisk = "HIGH")
+        AND visits.userid != ${userid} 
+        AND visits.locationid = ${locationid}
+        AND ABS(visits.time - ${time}) < ${fudgeTime};`
     try {
       let response = await sql.query(getContagiousVisitsQuery);
       return {
@@ -492,7 +496,7 @@ var thisModule = {
           contagionRisk: row.contagionRisk,
           name: row.name,
           address: row.address,
-          coordinates: [row.longitude, row.latitude]
+          coordinates: {lat: row.latitude, lng: row.longitude}
         }))
       };
     } catch (e) {
@@ -507,13 +511,14 @@ var thisModule = {
   },
 
   getLocations: async (sql) => {
-    let getLocationsQuery = `SELECT 
-                              id, 
-                              name, 
-                              address, 
-                              longitude, 
-                              latitude 
-                            FROM locations;`;
+    let getLocationsQuery = `
+      SELECT 
+        id, 
+        name, 
+        address, 
+        longitude, 
+        latitude 
+      FROM locations;`;
     try {
       let response = await sql.query(getLocationsQuery);
       return {
@@ -524,7 +529,7 @@ var thisModule = {
           id: row.id,
           name: row.name,
           address: row.address,
-          coordinates: [row.longitude, row.latitude]
+          coordinates: {lat: row.latitude, lng: row.longitude}
         }))
       };
     } catch (e) {
@@ -538,21 +543,96 @@ var thisModule = {
     }
   },
 
+  getLocationVisits: async (sql, userid, locationid, maxVisits) => {
+    let getLocationVisitsQuery = `
+      SELECT 
+        visits.id,
+        visits.time, 
+        visits.contagionRisk
+      FROM visits 
+      WHERE 
+        visits.userid = ${userid}
+        AND visits.locationid = ${locationid}
+      ORDER BY visits.time DESC
+      LIMIT ${maxVisits};`;
+    try {
+      let response = await sql.query(getLocationVisitsQuery);
+      return {
+        success: true,
+        code: "Success",
+        message: "Successfully fetched list of location visits",
+        visits: response.map(row => ({
+          id: row.id,
+          time: row.time,
+          risk: row.contagionRisk
+        }))
+      };
+    } catch (e) {
+      console.log(e);
+      return {
+        success: false,
+        code: "Failure",
+        message: "Failed to fetch list of location visits",
+        error: "" + e
+      }
+    }
+  },
+
+  getNearbyVisits: async (sql, userid, visitid, fudgeTime) => {
+    let getNearbyVisitsQuery = `
+      WITH particularVisit AS (
+        SELECT
+          locationid,
+          time
+        FROM visits
+        WHERE id = ${visitid})
+      SELECT 
+        users.username,
+        visits.id,
+        visits.time, 
+        visits.contagionRisk
+      FROM visits 
+      INNER JOIN users ON visits.userid = users.id 
+      WHERE 
+        visits.locationid = (SELECT locationid FROM particularVisit)
+        AND visits.userid != ${userid}
+        AND ABS(visits.time - (SELECT time FROM particularVisit)) < ${fudgeTime};`;
+    try {
+      let response = await sql.query(getNearbyVisitsQuery);
+      return {
+        success: true,
+        code: "Success",
+        message: "Successfully fetched list of nearby visits",
+        visits: response.map(row => ({
+          id: row.id,
+          username: row.username,
+          time: row.time,
+          risk: row.contagionRisk
+        }))
+      };
+    } catch (e) {
+      console.log(e);
+      return {
+        success: false,
+        code: "Failure",
+        message: "Failed to fetch list of nearby visits",
+        error: "" + e
+      }
+    }
+  },
+
   addVisit: async (sql, userid, locationid, time, contagionRisk) => {
-    let addVisitUpdate = `INSERT INTO visits
-                            (
-                              userid,
-                              locationid,
-                              time,
-                              contagionRisk
-                            )
-                          VALUES
-                            (
-                              '${userid}',
-                              '${locationid}',
-                              ${time},
-                              '${contagionRisk}'
-                            );`;
+    let addVisitUpdate = `
+      INSERT INTO visits (
+        userid,
+        locationid,
+        time,
+        contagionRisk)
+      VALUES (
+        '${userid}',
+        '${locationid}',
+        ${time},
+        '${contagionRisk}');`;
     try {
       let result = await sql.query(addVisitUpdate);
       return {

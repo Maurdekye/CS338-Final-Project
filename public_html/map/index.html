@@ -2,13 +2,107 @@
 <html>
 <head>
   <title>Contact Map</title>
+  <style type="text/css">
+    #map {
+      width: 500px;
+      height: 500px;
+    }
+  </style>
 </head>
 <body>
   <div data-navbar></div>
   <center>
     <h1>Contact Map</h1>
-    Pretend there's a map here.
+    <div id="map"></div>
   </center>
+    <div>
+      <hr>
+      <div id="location_info"></div>
+      <hr>
+    </div>
   <script src="/navbar.js"></script>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    async function initMap() {
+      var map = new google.maps.Map($("#map"), {
+        zoom: 11,
+        center: {lat: 40, lng: -75.1},
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      });
+
+      new Promise((a, r) => navigator.geolocation.getCurrentPosition(a, r, {enableHighAccuracy: true}))
+        .then(loc => map.setCenter({lat: loc.coords.latitude, lng: loc.coords.longitude}));
+
+      fetch("/api/getlocations", {method: "POST"})
+        .then(r => r.json())
+        .then(response => {
+          if (response.success) {
+            for (let location of response.locations) {
+              let marker = new google.maps.Marker({position: location.coordinates, map: map, title: location.name, label: location.name, clickable: true});
+              google.maps.event.addListener(marker, "click", async () => {
+                let htmlContent = `
+                  <center>
+                    <h3>
+                      ${location.name}
+                    </h3>
+                    <p>
+                      ${location.address}
+                    </p>
+                  </center>`;
+
+                let response = await (await fetch("/api/getlocationvisits", {
+                  method: "POST",
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    locationid: location.id
+                  })
+                })).json();
+
+                if (response.success) {
+                  let entries = await Promise.all(response.visits.map(async visit => {
+                    let nearbyVisitsResponse = await (await fetch("/api/getnearbyvisits", {
+                      method: "POST",
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        visitid: visit.id
+                      })
+                    })).json();
+
+                    let nearbyVisitEntries = nearbyVisitsResponse.visits.map(v => `<li>${v.username} on ${new Date(v.time*1000).toLocaleString()}, risk: ${v.risk}</li>`);
+                    if (nearbyVisitEntries.length > 0)
+                      return `
+                        <li>
+                          During your visit on ${new Date(visit.time*1000).toLocaleString()}, you came into contact with: 
+                          <ul>
+                            ${nearbyVisitEntries.join("")}
+                          </ul>
+                        </li>`;
+                      else
+                        return '';
+                  }));
+
+                  if (entries.length > 0) {
+                    let content = `
+                      <ul>
+                        ${entries.join("")}
+                      </ul>`;
+                    htmlContent += content;
+                  }
+                }
+
+                $("#location_info").innerHTML = htmlContent;
+              });
+            }
+          }
+        });
+
+    }
+  </script>
+  <script type="text/javascript" src="/gmaps.js?callback=initMap"></script>
 </body>
 </html>

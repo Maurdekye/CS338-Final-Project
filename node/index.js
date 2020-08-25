@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs').promises;
 const mysql = require('promise-mysql');
+const fetch = require('node-fetch');
 const model = require('./model.js')
 
 async function getConfig(confPath, defaultConfig) {
@@ -42,6 +43,20 @@ function isUserSession(session, res) {
   }
 }
 
+function userSessionGate(callback) {
+  return async (req, res) => {
+    if (req.session.type === "Anonymous") {
+      res.send(JSON.stringify({
+        success: false,
+        code: "InvalidSession",
+        message: "Session invalid; please log back in."
+      }));
+    } else {
+      callback(req, res);
+    }
+  };
+}
+
 try{
   (async () => {
 
@@ -69,7 +84,8 @@ try{
         "RECOVERING": "LOW"
       },
       visitFudgeTime: 86400,
-      maxVisitsToCheck: 100
+      maxVisitsToCheck: 100,
+      gMapsApiKey: "<PUT-API-KEY-HERE>"
     });
     let jsonParser = bodyParser.json();
 
@@ -167,124 +183,132 @@ try{
       }
     });
 
-    app.post("/api/changepassword", jsonParser, async (req, res) => {
-      if (isUserSession(req.session, res)) {
-        result = await model.changePassword(sql, {
+    app.post("/api/changepassword", jsonParser, userSessionGate(async (req, res) => {
+      result = await model.changePassword(sql, {
+        userid: req.session.user.id,
+        newPassword: req.body.newPassword
+      });
+      if (result.success) {
+        log(req.ip, `User '${req.session.user.username}' changed their password`);
+      }
+      res.send(JSON.stringify(result));
+    }));
+
+    app.post("/api/updatestatus", jsonParser, userSessionGate(async (req, res) => {
+      if (req.session.user.status == req.body.status) {
+        res.send(JSON.stringify({
+          success: true,
+          code: "StatusUnchanged",
+          message: `Your status is already set to ${req.session.user.status}`
+        }));
+      } else {
+        let result = await model.changeStatus(sql, {
           userid: req.session.user.id,
-          newPassword: req.body.newPassword
+          status: req.body.status 
         });
         if (result.success) {
-          log(req.ip, `User '${req.session.user.username}' changed their password`);
+          log(req.ip, `User ${req.session.user.username} has updated their infection status to ${req.body.status}`);
+          if (config.infectionRetropropogation.hasOwnProperty(req.body.status)) {
+            result = await model.contagionRetroPropogation(sql, {
+              userid: req.session.user.id,
+              retroTime: config.infectionRetropropogation[req.body.status],
+              contagionRisk: config.infectionPropogationRisk[req.body.status]
+            });
+          }
         }
         res.send(JSON.stringify(result));
       }
-    });
+    }));
 
-    app.post("/api/updatestatus", jsonParser, async (req, res) => {
-      if (isUserSession(req.session, res)) {
-        if (req.session.user.status == req.body.status) {
-          res.send(JSON.stringify({
-            success: true,
-            code: "StatusUnchanged",
-            message: `Your status is already set to ${req.session.user.status}`
-          }));
-        } else {
-          let result = await model.changeStatus(sql, {
-            userid: req.session.user.id,
-            status: req.body.status 
-          });
-          if (result.success) {
-            log(req.ip, `User ${req.session.user.username} has updated their infection status to ${req.body.status}`);
-            if (config.infectionRetropropogation.hasOwnProperty(req.body.status)) {
-              result = await model.contagionRetroPropogation(sql, {
-                userid: req.session.user.id,
-                retroTime: config.infectionRetropropogation[req.body.status],
-                contagionRisk: config.infectionPropogationRisk[req.body.status]
-              });
-            }
-          }
-          res.send(JSON.stringify(result));
-        }
-      }
-    });
+    app.post("/api/getallvisits", jsonParser, userSessionGate(async (req, res) => {
+      let response = await model.getVisits(sql, req.session.user.id, req.body.maxVisits);
+      res.send(JSON.stringify(response));
+    }));
 
-    app.post("/api/getvisits", jsonParser, async (req, res) => {
-      if (isUserSession(req.session, res)) {
-        let response = await model.getVisits(sql, req.session.user.id, req.body.maxVisits);
-        res.send(JSON.stringify(response));
-      }
-    });
+    app.post("/api/getlocationvisits", jsonParser, userSessionGate(async (req, res) => {
+      let response = await model.getLocationVisits(sql, req.session.user.id, req.body.locationid, config.maxVisitsToCheck);
+      res.send(response);
+    }));
 
-    app.post("/api/contagiousvisits", async (req, res) => {
-      if (isUserSession(req.session, res)) {
-        let response = await model.getVisits(sql, req.session.user.id, config.maxVisitsToCheck);
-        let assesments = await Promise.all(response.visits.map(async visit => {
+    app.post("/api/getnearbyvisits", jsonParser, userSessionGate(async (req, res) => {
+      let response = await model.getNearbyVisits(sql, req.session.user.id, req.body.visitid, config.visitFudgeTime);
+      res.send(response);
+    }));
 
-          let similarVisitsResponse = await model.getNearbyContagiousVisits(sql, req.session.user.id, visit.locationid, visit.time, config.visitFudgeTime);
-          let similarVisits = similarVisitsResponse.visits;
-          let risk = "NONE";
-          let contacts = [];
+    app.post("/api/contagiousvisits", userSessionGate(async (req, res) => {
+      let response = await model.getVisits(sql, req.session.user.id, config.maxVisitsToCheck);
+      let assesments = await Promise.all(response.visits.map(async visit => {
 
-          for (let v of similarVisits) {
-            if (v.contagionRisk === "LOW" && risk !== "HIGH")
-              risk = "LOW";
-            else if (v.contagionRisk === "HIGH")
-              risk = "HIGH";
-            contacts.push({
-              userid: v.userid,
-              username: v.username,
-              locationid: v.locationid,
-              locationname: v.name,
-              time: v.time,
-              contagionRisk: v.contagionRisk
-            });
-          }
+        let similarVisitsResponse = await model.getNearbyContagiousVisits(sql, req.session.user.id, visit.locationid, visit.time, config.visitFudgeTime);
+        let similarVisits = similarVisitsResponse.visits;
+        let risk = "NONE";
+        let contacts = [];
 
-          if (similarVisits.some(v => v.contagionRisk == "HIGH")) {
-            risk = "HIGH";
-          } else if (similarVisits.some(v => v.contagionRisk == "LOW")) {
+        for (let v of similarVisits) {
+          if (v.contagionRisk === "LOW" && risk !== "HIGH")
             risk = "LOW";
-          }
-
-          visit.assessedRisk = risk;
-          visit.contacts = contacts;
-          return visit;
-
-        }));
-
-        let overallRisk = "NONE";
-        for (let v of assesments) {
-          if (v.assessedRisk == "LOW" && overallRisk !== "HIGH")
-            overallRisk = "LOW";
-          else if (v.assessedRisk == "HIGH")
-            overallRisk = "HIGH";
+          else if (v.contagionRisk === "HIGH")
+            risk = "HIGH";
+          contacts.push({
+            userid: v.userid,
+            username: v.username,
+            locationid: v.locationid,
+            locationname: v.name,
+            time: v.time,
+            contagionRisk: v.contagionRisk
+          });
         }
 
-        res.send(JSON.stringify({
-          success: true,
-          code: "Success",
-          message: "Assessed risk of all prior visits",
-          visits: assesments,
-          overallRisk: overallRisk
-        }));
+        if (similarVisits.some(v => v.contagionRisk == "HIGH")) {
+          risk = "HIGH";
+        } else if (similarVisits.some(v => v.contagionRisk == "LOW")) {
+          risk = "LOW";
+        }
+
+        visit.assessedRisk = risk;
+        visit.contacts = contacts;
+        return visit;
+
+      }));
+
+      let overallRisk = "NONE";
+      for (let v of assesments) {
+        if (v.assessedRisk == "LOW" && overallRisk !== "HIGH")
+          overallRisk = "LOW";
+        else if (v.assessedRisk == "HIGH")
+          overallRisk = "HIGH";
       }
-    });
+
+      res.send(JSON.stringify({
+        success: true,
+        code: "Success",
+        message: "Assessed risk of all prior visits",
+        visits: assesments,
+        overallRisk: overallRisk
+      }));
+    }));
 
     app.post("/api/getlocations", async (req, res) => {
       let results = await model.getLocations(sql);
       res.send(JSON.stringify(results));
     });
 
-    app.post("/api/addvisit", jsonParser, async (req, res) => {
-      if (isUserSession(req.session, res)) {
-        let contagionRisk = "NONE";
-        if (config.infectionRetropropogation.hasOwnProperty(req.session.user.status)
-            && req.body.time > (new Date().getTime() / 1000) - config.infectionRetropropogation[req.session.user.status]) {
-          contagionRisk = config.infectionPropogationRisk[req.session.user.status];
-        }
-        let result = await model.addVisit(sql, req.session.user.id, req.body.locationid, req.body.time, contagionRisk);
-        res.send(JSON.stringify(result));
+    app.post("/api/addvisit", jsonParser, userSessionGate(async (req, res) => {
+      let contagionRisk = "NONE";
+      if (config.infectionRetropropogation.hasOwnProperty(req.session.user.status)
+          && req.body.time > (new Date().getTime() / 1000) - config.infectionRetropropogation[req.session.user.status]) {
+        contagionRisk = config.infectionPropogationRisk[req.session.user.status];
       }
+      let result = await model.addVisit(sql, req.session.user.id, req.body.locationid, req.body.time, contagionRisk);
+      res.send(JSON.stringify(result));
+    }));
+
+    // misc endpoints
+
+    app.get("/gmaps.js", async (req, res) => {
+      fetch(`https://maps.googleapis.com/maps/api/js?key=${config.gMapsApiKey}&callback=${req.query.callback}`)
+        .then(resp => resp.text())
+        .then(js => res.send(js));
     });
 
     // end of endpoints
