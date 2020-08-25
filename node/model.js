@@ -504,6 +504,72 @@ var thisModule = {
         error: "" + e
       }
     }
+  },
+
+  getLocations: async (sql) => {
+    let getLocationsQuery = `SELECT 
+                              id, 
+                              name, 
+                              address, 
+                              longitude, 
+                              latitude 
+                            FROM locations;`;
+    try {
+      let response = await sql.query(getLocationsQuery);
+      return {
+        success: true,
+        code: "Success",
+        message: "Successfully fetched list of locations",
+        locations: response.map(row => ({
+          id: row.id,
+          name: row.name,
+          address: row.address,
+          coordinates: [row.longitude, row.latitude]
+        }))
+      };
+    } catch (e) {
+      console.log(e);
+      return {
+        success: false,
+        code: "Failure",
+        message: "Failed to fetch list of locations",
+        error: "" + e
+      }
+    }
+  },
+
+  addVisit: async (sql, userid, locationid, time, contagionRisk) => {
+    let addVisitUpdate = `INSERT INTO visits
+                            (
+                              userid,
+                              locationid,
+                              time,
+                              contagionRisk
+                            )
+                          VALUES
+                            (
+                              '${userid}',
+                              '${locationid}',
+                              ${time},
+                              '${contagionRisk}'
+                            );`;
+    try {
+      let result = await sql.query(addVisitUpdate);
+      return {
+        success: true,
+        code: "Success",
+        message: "Successfully added visit to database"
+      };
+    } catch (e) {
+      console.log(e);
+      return {
+        success: false,
+        code: "Failure",
+        message: "Failed to add visit to database",
+        error: "" + e
+      }
+    }
+
   }
 }
 

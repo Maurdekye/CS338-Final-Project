@@ -7,8 +7,47 @@
   <div data-navbar></div>
   <center>
     <h1>Add a new Location Visit</h1>
-    beep boop there will be something eventually
+    <form id="add_visit_form">
+      <label> Location: <select id="location_select" required></select></label> <br>
+      <label> Time of Visit: <input type="datetime-local" id="time" required></label> <br>
+      <input type="submit" value="Add Visit">
+    </form>
+    <p id="feedback"></p>
   </center>
   <script src="/navbar.js"></script>
+  <script type="text/javascript">
+    var $ = document.querySelector.bind(document);
+
+    fetch("/api/getlocations", {
+      method: "POST"
+    }).then(async response => {
+      response = await response.json();
+
+      if (response.success) {
+        let optionHtml = "";
+        for (let loc of response.locations) {
+          optionHtml += `<option value='${loc.id}'>${loc.name}, ${loc.address}</option>`;
+        }
+        $("#location_select").innerHTML = optionHtml;
+      }
+    });
+
+    $("#add_visit_form").onsubmit = e => {
+      e.preventDefault();
+      fetch("/api/addvisit", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          locationid: parseInt($("#location_select").options[$("#location_select").selectedIndex].value),
+          time: new Date($("#time").value).getTime() / 1000
+        })
+      }).then(async response => {
+        let result = await response.json();
+        $("#feedback").innerHTML = result.message;
+      })
+    }
+  </script>
 </body>
 </html>

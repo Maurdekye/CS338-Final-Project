@@ -132,8 +132,8 @@ try{
 
     app.post("/api/login", jsonParser, async (req, res) => {
       let result = await model.login(sql, {
-          username: req.body.username,
-          password: req.body.password
+        username: req.body.username,
+        password: req.body.password
       }, req.ip, config.sessionLength);
       res.send(JSON.stringify(result));
       if (result.success) 
@@ -268,7 +268,24 @@ try{
           overallRisk: overallRisk
         }));
       }
-    })
+    });
+
+    app.post("/api/getlocations", async (req, res) => {
+      let results = await model.getLocations(sql);
+      res.send(JSON.stringify(results));
+    });
+
+    app.post("/api/addvisit", jsonParser, async (req, res) => {
+      if (isUserSession(req.session, res)) {
+        let contagionRisk = "NONE";
+        if (config.infectionRetropropogation.hasOwnProperty(req.session.user.status)
+            && req.body.time > (new Date().getTime() / 1000) - config.infectionRetropropogation[req.session.user.status]) {
+          contagionRisk = config.infectionPropogationRisk[req.session.user.status];
+        }
+        let result = await model.addVisit(sql, req.session.user.id, req.body.locationid, req.body.time, contagionRisk);
+        res.send(JSON.stringify(result));
+      }
+    });
 
     // end of endpoints
 

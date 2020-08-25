@@ -52,8 +52,7 @@
 
       $("#profile_content").innerHTML = `
         <p>Your username is '${response.session.user.username}'</p>
-        <p>Your email address is ${response.session.user.email}</p>
-      `;
+        <p>Your email address is ${response.session.user.email}</p>`;
 
       $("#status_display").innerHTML = displayStatus[response.session.user.status];
     });
