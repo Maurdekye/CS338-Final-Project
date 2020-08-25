@@ -19,8 +19,10 @@ async function getConfig(confPath, defaultConfig) {
 
 const legalAnonymousPaths = [
   "/",
+  "/style.css",
   "/navbar.htm",
   "/navbar.js",
+  "/gmaps.js",
   "/login/",
   "/register/",
   "/favicon.ico"
@@ -28,19 +30,6 @@ const legalAnonymousPaths = [
 
 function log(ip, message) {
   console.log(`${new Date().toISOString()} [${ip}] ${message}`);
-}
-
-function isUserSession(session, res) {
-  if (session.type === "Anonymous") {
-    res.send(JSON.stringify({
-      success: false,
-      code: "InvalidSession",
-      message: "Session invalid; please log back in."
-    }));
-    return false;
-  } else {
-    return true;
-  }
 }
 
 function userSessionGate(callback) {

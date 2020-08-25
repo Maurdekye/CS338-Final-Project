@@ -10,7 +10,8 @@ var $ = document.querySelector.bind(document);
     $("#profile_link").href = "/profile/";
     $("#profile_link").innerHTML = `My Profile (${session.user.username})`;
 
-    $("#logout_container").innerHTML = "<a href='#' onclick='logout()'>Logout</a>";
+    $("#logout").hidden = false;
+    $("#logout_separator").hidden = false;
   }
 })();
 

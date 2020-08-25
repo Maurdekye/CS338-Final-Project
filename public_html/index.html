@@ -1,14 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Landing Page</title>
+  <title>Contactless</title>
+  <link rel="stylesheet" type="text/css" href="/style.css">
 </head>
 <body>
-  <div data-navbar></div>
-  <center>
-    <h1>THIS IS THE LANDING PAGE</h1>
-    <p>do you like ?</p>
-  </center>
-  <script src="/navbar.js"></script>
+  <div class="flexcol content-container">
+    <div data-navbar></div>
+    <div class="flexrow title">
+      <div class="fill"></div>
+      <h1>Contactless</h1>
+      <div class="fill"></div>
+    </div>
+    <div class="flexrow subtitle">
+      <div class="fill"></div>
+      <p>A COVID-19 Contact Tracing Service</p>
+      <div class="fill"></div>
+    </div>
+    <div class="colfill fill flexcol">
+      <div id="map" class="fill"></div>
+    </div>
+  </div>
 </body>
+<script src="/navbar.js"></script>
+<script type="text/javascript">
+  var $ = document.querySelector.bind(document);
+
+  async function initMap() {
+    var map = new google.maps.Map($("#map"), {
+      zoom: 11,
+      center: {lat: 40, lng: -75.1},
+      mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+
+    new Promise((a, r) => navigator.geolocation.getCurrentPosition(a, r, {enableHighAccuracy: true}))
+    .then(loc => map.setCenter({lat: loc.coords.latitude, lng: loc.coords.longitude}));
+
+    fetch("/api/getlocations", {method: "POST"})
+    .then(r => r.json())
+    .then(response => {
+      if (response.success) {
+        for (let location of response.locations) {
+          let marker = new google.maps.Marker({position: location.coordinates, map: map, title: location.name, label: location.name, clickable: true});
+        }
+      }
+    });
+  }
+</script>
+<script type="text/javascript" src="/gmaps.js?callback=initMap"></script>
 </html>
