@@ -1,23 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login Page</title>
+  <title>Login</title>
   <link rel="stylesheet" type="text/css" href="/style.css">
 </head>
 <body>
   <div data-navbar></div>
-  <center>
-    <h1>Login Here</h1>
-    <form id="login_form">
-      <label>Username: <input type="text" id="username" required></label><br>
-      <label>Password: <input type="password" id="password" required></label><br>
-      <input type="submit" id="login" value="Login">
+  <div class="flexrow">
+    <div class="fill"></div>
+    <h1>Login to your Contactless Account</h1>
+    <div class="fill"></div>
+  </div>
+  <div class="flexrow">
+    <div class="fill"></div>
+    <form id="login_form" class="shadow">
+      <div class="flexcol">
+        <div class="flexrow formrow">
+          <label class="formlabel">Username: </label>
+          <input class="forminput" type="text" id="username" required>
+        </div>
+        <div class="flexrow formrow">
+          <label class="formlabel">Password: </label>
+          <input class="forminput" type="password" id="password" required>
+        </div>
+        <div class="flexrow formrow">
+          <div class="fill"></div>
+          <input type="submit" id="login" class="shadow" value="Login">
+          <div class="fill"></div>
+        </div>
+      </div>
     </form>
-    <p id="login_feedback"></p>
-    Don't have an account? <a href="/register/">Register Now</a>
-  </center>
+    <div class="fill"></div>
+  </div>
+  <div class="flexrow">
+    <div class="fill"></div>
+    <div class="popupContainer">
+      <span id="login_feedback" class="shadow popup hide"></span>
+    </div>
+    <div class="fill"></div>
+  </div>
+  <div class="flexrow">
+    <div class="fill"></div>
+    <p>Don't have an account? <a href="/register/">Register Now</a></p> 
+    <div class="fill"></div>
+  </div>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
+    const sleep = m => new Promise(r => setTimeout(r, m))
 
     $("#login_form").onsubmit = () => {
       fetch("/api/login", {
@@ -36,6 +65,11 @@
           window.location.href = "/";
         } else {
           $("#login_feedback").innerHTML = result.message;
+          $("#login_feedback").classList.remove("hide");
+          $("#login_feedback").classList.add("show");
+          await sleep(5000);
+          $("#login_feedback").classList.remove("show");
+          $("#login_feedback").classList.add("hide");
         }
       });
       return false;

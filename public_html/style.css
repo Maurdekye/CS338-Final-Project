@@ -60,7 +60,60 @@ html, body {
   margin: 4px;
 }
 
+.shadow {
+  box-shadow: 0 6px 16px 0 #AAA;
+}
+
 #map {
   border-radius: 16px;
   box-shadow: 0 0 12px 0px #CCC;
+}
+
+.formlabel {
+  width: 100px;
+}
+
+.forminput {
+  width: 150px;
+}
+
+#login {
+  flex: 8;
+  margin: 2px;
+  padding: 8px 0px;
+  border-radius: 24px;
+  background-color: #DDD;
+  font-size: 18px;
+}
+
+.formrow {
+  margin: 5px;
+}
+
+form {
+  background-color: #EEE;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.popup {
+  background-color: #FAA;
+  border-radius: 12px;
+}
+
+.popup, .popupContainer {
+  padding: 12px;
+  margin-top: 20px;
+}
+
+.popupContainer .show {
+  visibility: visible;
+  opacity: 1;
+  transition: visibility 0s, opacity 0.7s ease-in-out;
+}
+
+.popupContainer .hide {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 0.7s, opacity 0.7s ease-in-out;
 }
