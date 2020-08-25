@@ -31,6 +31,7 @@
       </form>
       <p id="password_change_feedback"></p>
     </div>
+    <div id="visit_list"></div>
   </center>
   <script src="/navbar.js"></script>
   <script type="text/javascript">
@@ -44,14 +45,42 @@
         "HEALTHY-IMMUNE": "Healthy & Immune"
     };
 
-    (async () => {
-      let response = await (await fetch("/api/getsession", {method: "POST"})).json();
+    fetch("/api/getsession", {
+      method: "POST"
+    }).then(async response => {
+      response = await response.json();
+
       $("#profile_content").innerHTML = `
         <p>Your username is '${response.session.user.username}'</p>
         <p>Your email address is ${response.session.user.email}</p>
       `;
+
       $("#status_display").innerHTML = displayStatus[response.session.user.status];
-    })();
+    });
+
+    fetch("/api/contagiousvisits", {
+      method: "POST"
+    }).then(async response => {
+      response = await response.json();
+
+      if (response.success) {
+        let visitHtml = "<ul>";
+        for (var visit of response.visits) {
+          visitHtml += `
+            <li>
+              Contact with ${visit.username} at ${visit.name}, on ${new Date(visit.time * 1000).toLocaleString()}. Risk Assessment: ${visit.assessedRisk}
+            </li>
+          `;
+        }
+        visitHtml += "</ul>";
+        visitHtml += `
+          <p>
+            Overall risk of infection: ${response.overallRisk}
+          </p>`;
+
+        $("#visit_list").innerHTML = visitHtml;
+      }
+    });
 
     $("#change_password").onsubmit = async e => {
       e.preventDefault(true);
