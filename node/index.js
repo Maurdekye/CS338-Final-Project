@@ -68,7 +68,8 @@ try{
         "INFECTED": "HIGH",
         "RECOVERING": "LOW"
       },
-      visitFudgeTime: 86400
+      visitFudgeTime: 86400,
+      maxVisitsToCheck: 100
     });
     let jsonParser = bodyParser.json();
 
@@ -216,7 +217,7 @@ try{
 
     app.post("/api/contagiousvisits", async (req, res) => {
       if (isUserSession(req.session, res)) {
-        let response = await model.getVisits(sql, req.session.user.id, 0);
+        let response = await model.getVisits(sql, req.session.user.id, config.maxVisitsToCheck);
         let assesments = await Promise.all(response.visits.map(async visit => {
 
           let similarVisitsResponse = await model.getNearbyContagiousVisits(sql, req.session.user.id, visit.locationid, visit.time, config.visitFudgeTime);
@@ -234,7 +235,8 @@ try{
               username: v.username,
               locationid: v.locationid,
               locationname: v.name,
-              time: v.time
+              time: v.time,
+              contagionRisk: v.contagionRisk
             });
           }
 

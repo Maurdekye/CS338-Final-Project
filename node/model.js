@@ -475,7 +475,7 @@ var thisModule = {
                                         visits.contagionRisk = "LOW" 
                                         OR visits.contagionRisk = "HIGH"
                                       )
-                                      AND visit.userid != ${userid} 
+                                      AND visits.userid != ${userid} 
                                       AND visits.locationid = ${locationid}
                                       AND ABS(visits.time - ${time}) < ${fudgeTime};`
     try {

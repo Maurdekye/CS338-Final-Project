@@ -31,8 +31,8 @@
       </form>
       <p id="password_change_feedback"></p>
     </div>
-    <div id="visit_list"></div>
   </center>
+  <div id="visit_list"></div>
   <script src="/navbar.js"></script>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
@@ -64,15 +64,26 @@
       response = await response.json();
 
       if (response.success) {
-        let visitHtml = "<ul>";
+        let visitHtml = `
+          <ul>`;
         for (var visit of response.visits) {
+          let userlist = visit.contacts.map(c => c.username).join(", ");
           visitHtml += `
-            <li>
-              Contact with ${visit.username} at ${visit.name}, on ${new Date(visit.time * 1000).toLocaleString()}. Risk Assessment: ${visit.assessedRisk}
-            </li>
-          `;
+            <li> 
+              Contacts at ${visit.name} on ${new Date(visit.time * 1000).toLocaleString()}
+              <ul>`;
+          for (let contact of visit.contacts) {
+            visitHtml += `
+                <li> 
+                  ${contact.username} at ${new Date(contact.time * 1000).toLocaleString()}, Infection risk: ${contact.contagionRisk}
+                </li>`;
+          }
+          visitHtml += `
+              </ul>
+            </li>`;
         }
-        visitHtml += "</ul>";
+        visitHtml += `
+          </ul>`;
         visitHtml += `
           <p>
             Overall risk of infection: ${response.overallRisk}
