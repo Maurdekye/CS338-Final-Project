@@ -47,14 +47,14 @@ html, body {
   margin: 8px;
 }
 
-#nav_container > a:link, #nav_container > a:visited {
+.linkbutton:link, .linkbutton:visited {
   padding: 10px;
   text-decoration: none;
   color: black;
   border-radius: 5px;
 }
 
-#nav_container > a:hover, #nav_container > a:active {
+.linkbutton:hover, .linkbutton:active {
   background-color: #DFDFDF;
   color: #444;
   box-shadow: 0 2px 4px #CCC;
@@ -100,6 +100,11 @@ html, body {
 .wideformlabel {
   width: 150px;
 }
+
+.widerformlabel {
+  width: 180px;
+}
+
 
 .forminput {
   width: 200px;
@@ -156,6 +161,34 @@ form {
 
 .padding {
   padding: 20px;
+}
+
+.smallpadding {
+  padding: 10px;
+}
+
+.profilepanel {
+  min-width: 800px;
+  padding: 40px;
+  margin: 20px;
+  border-radius: 16px;
+  border: 1px solid black;
+  background-color: #DDD;
+}
+
+.profileinfo * {
+  padding: 8px;
+  font-size: 18px;
+}
+
+.preStatusText {
+  padding-left: 0;
+}
+
+#status_select {
+  border: none;
+  background-color: inherit;
+  padding: 0;
 }
 
 .bold {

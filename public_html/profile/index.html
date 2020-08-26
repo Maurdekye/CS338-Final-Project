@@ -6,37 +6,109 @@
 </head>
 <body>
   <div data-navbar></div>
-  <center>
-    <h1>Profile Page</h1>
-    Hello!
-    <div id="profile_content"></div>
-    <div id="change_status">
-      <p>I am <span id="status_display"></span></p>
-      <p>
-        <select id="status_select">
-          <option value="HEALTHY">Healthy</option>
-          <option value="SYMPTOMATIC">Symptomatic</option>
-          <option value="INFECTED">Infected</option>
-          <option value="RECOVERING">Recovering</option>
-          <option value="HEALTHY-IMMUNE">Healthy & Immune</option>
-        </select>
-        <input type="button" id="update_status" value="Update Status">
-      </p>
+  <div class="flex">
+    <div class="fill flexcol">
+      <div class="flexrow profilepanel shadow">
+        <div class="flexcol profileinfo">
+          <span id="username"></span>
+          <span id="email"></span>
+          <div class="flexrow">
+            <span class="preStatusText">I am </span>
+            <select id="status_select">
+              <option value="HEALTHY">Healthy</option>
+              <option value="SYMPTOMATIC">Symptomatic</option>
+              <option value="INFECTED">Infected</option>
+              <option value="RECOVERING">Recovering</option>
+              <option value="HEALTHY-IMMUNE">Healthy & Immune</option>
+            </select>
+          </div>
+        </div>
+        <div class="fill"></div>
+        <div>
+          <form id="change_password">
+            <div id="flexcol shadow">
+              <div class="flexrow formrow">
+                <label class="widerformlabel">New Password: </label>
+                <input class="forminput" type="password" id="password" required>
+              </div>
+              <div class="flexrow formrow">
+                <label class="widerformlabel">Reenter New Password: </label>
+                <input class="forminput" type="password" id="reenter_password" required>
+              </div>
+              <div class="flexrow formrow">
+                <div class="fill"></div>
+                <input type="submit" class="submit_button shadow" value="Change Password">
+                <div class="fill"></div>
+              </div>
+            </div>
+          </form>
+          <div class="flexrow">
+            <div class="fill"></div>
+            <div class="popupContainer">
+              <span id="feedback" class="shadow popup hide"></span>
+            </div>
+            <div class="fill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="fill padding">
+        <div class="flexcol table">
+          <div class="flexrow tablerow">
+            <div class="fill tablecell flexrow">
+              <div class="fill"></div>
+              <span class="bold">Potential COVID-19 Contacts:</span>
+              <div class="fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div>
-      Change Password:
-      <form id="change_password">
-        <label>New Password: <input type="password" id="password" required></label><br>
-        <label>Reenter New Password: <input type="password" id="reenter_password" required></label><br>
-        <input type="submit" value="Change Password">
-      </form>
-      <p id="password_change_feedback"></p>
+    <div class="fill padding">
+      <div class="flexcol table">
+        <div class="flexrow tablerow">
+          <div class="fill tablecell flexrow">
+            <div class="fill"></div>
+            <span class="bold">Recent Visits:</span>
+            <div class="fill"></div>
+          </div>
+        </div>
+        <div class="flexcol table"></div>
+        <div class="flexrow tablerow">
+          <div class="fill tablecell flexrow">
+            <div class="fill"></div>
+            <div class="smallpadding">
+              <a class="linkbutton" href="/addlocation/">Register a new visit</a>
+            </div>
+            <div class="fill"></div>
+          </div>
+        </div>
+      </div>
     </div>
-  </center>
-  <div id="visit_list"></div>
+  </div>
   <script src="/navbar.js"></script>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
+    const sleep = m => new Promise(r => setTimeout(r, m));
+
+    async function popup(message) {
+      $("#feedback").innerHTML = message;
+      $("#feedback").classList.remove("hide");
+      $("#feedback").classList.add("show");
+      $("#feedback").classList.remove("success");
+      await sleep(5000);
+      $("#feedback").classList.remove("show");
+      $("#feedback").classList.add("hide");
+    }
+
+    async function popupSuccess(message) {
+      $("#feedback").innerHTML = message;
+      $("#feedback").classList.remove("hide");
+      $("#feedback").classList.add("show");
+      $("#feedback").classList.add("success");
+      await sleep(5000);
+      $("#feedback").classList.remove("show");
+      $("#feedback").classList.add("hide");
+    }
 
     var displayStatus = {
         "HEALTHY": "Healthy",
@@ -51,91 +123,87 @@
     }).then(async response => {
       response = await response.json();
 
-      $("#profile_content").innerHTML = `
-        <p>Your username is '${response.session.user.username}'</p>
-        <p>Your email address is ${response.session.user.email}</p>`;
+      $("#username").innerHTML = response.session.user.username;
+      $("#email").innerHTML = response.session.user.email;
 
-      $("#status_display").innerHTML = displayStatus[response.session.user.status];
-    });
-
-    fetch("/api/contagiousvisits", {
-      method: "POST"
-    }).then(async response => {
-      response = await response.json();
-
-      if (response.success) {
-        let visitHtml = `
-          <ul>`;
-        for (var visit of response.visits) {
-          let userlist = visit.contacts.map(c => c.username).join(", ");
-          visitHtml += `
-            <li> 
-              Contacts at ${visit.name} on ${new Date(visit.time * 1000).toLocaleString()}
-              <ul>`;
-          for (let contact of visit.contacts) {
-            visitHtml += `
-                <li> 
-                  ${contact.username} at ${new Date(contact.time * 1000).toLocaleString()}, Infection risk: ${contact.contagionRisk}
-                </li>`;
-          }
-          visitHtml += `
-              </ul>
-            </li>`;
+      for (let option of $("#status_select").options) {
+        if (option.value === response.session.user.status) {
+          option.selected = true;
+          break;
         }
-        visitHtml += `
-          </ul>`;
-        visitHtml += `
-          <p>
-            Overall risk of infection: ${response.overallRisk}
-          </p>`;
-
-        $("#visit_list").innerHTML = visitHtml;
       }
     });
+
+    // fetch("/api/contagiousvisits", {
+    //   method: "POST"
+    // }).then(async response => {
+    //   response = await response.json();
+
+    //   if (response.success) {
+    //     let visitHtml = `
+    //       <ul>`;
+    //     for (var visit of response.visits) {
+    //       let userlist = visit.contacts.map(c => c.username).join(", ");
+    //       visitHtml += `
+    //         <li> 
+    //           Contacts at ${visit.name} on ${new Date(visit.time * 1000).toLocaleString()}
+    //           <ul>`;
+    //       for (let contact of visit.contacts) {
+    //         visitHtml += `
+    //             <li> 
+    //               ${contact.username} at ${new Date(contact.time * 1000).toLocaleString()}, Infection risk: ${contact.contagionRisk}
+    //             </li>`;
+    //       }
+    //       visitHtml += `
+    //           </ul>
+    //         </li>`;
+    //     }
+    //     visitHtml += `
+    //       </ul>`;
+    //     visitHtml += `
+    //       <p>
+    //         Overall risk of infection: ${response.overallRisk}
+    //       </p>`;
+
+    //     $("#visit_list").innerHTML = visitHtml;
+    //   }
+    // });
 
     $("#change_password").onsubmit = async e => {
       e.preventDefault(true);
       if ($("#password").value !== $("#reenter_password").value) {
-        $("#password_change_feedback").innerHTML = "Passwords do not match!";
+        popup("Passwords do not match!");
       } else {
-        let response = await (await fetch("/api/getsession", {method: "POST"})).json();
-        let session = response.session;
-        if (session.type === "User") {
-          response = await (await fetch("/api/changepassword", {
-            method: "POST",
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              newPassword: $("#password").value
-            })
-          })).json();
-          $("#password_change_feedback").innerHTML = response.message
-        } else if (session.type === "Anonymous") {
-          $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
-        }
-      }
-    };
-
-    $("#update_status").onclick = async () => {
-      let response = await (await fetch("/api/getsession", {method: "POST"})).json();
-      let session = response.session;
-      if (session.type === "User") {
-        let select = $("#status_select");
-        let response = await (await fetch("/api/updatestatus", {
+        response = await (await fetch("/api/changepassword", {
           method: "POST",
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            status: select.options[select.selectedIndex].value
+            newPassword: $("#password").value
           })
         })).json();
         if (response.success) {
-          $("#status_display").innerHTML = displayStatus[select.options[select.selectedIndex].value];
+          popupSuccess(response.message);
+        } else {
+          popup(response.message);
         }
-      } else if (session.type === "Anonymous")  {
-        $("#password_change_feedback").innerHTML = "Invalid session; please log back in";
+      }
+    };
+
+    $("#status_select").onchange = async () => {
+      let selectedStatus = $("#status_select").options[$("#status_select").selectedIndex].value;
+      let response = await (await fetch("/api/updatestatus", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: selectedStatus
+        })
+      })).json();
+      if (!response.success) {
+        popup(response.message);
       }
     }
   </script>
