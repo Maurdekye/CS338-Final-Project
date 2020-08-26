@@ -106,7 +106,7 @@ html, body {
 
 
 .forminput {
-  width: 150px;
+  width: 200px;
 }
 
 .submit_button {
@@ -148,6 +148,10 @@ form {
   visibility: hidden;
   opacity: 0;
   transition: visibility 0s 0.7s, opacity 0.7s ease-in-out;
+}
+
+.popupContainer .success {
+  background-color: #AFA;
 }
 
 .table {
