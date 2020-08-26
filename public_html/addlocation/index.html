@@ -6,60 +6,68 @@
 </head>
 <body>
   <div data-navbar></div>
-    <div class="flexrow">
-      <div class="fill"></div>
-      <h1>Add a new Location Visit</h1>
-      <div class="fill"></div>
+  <div class="flex">
+    <div class="mapContainer">
+      <div id="map" class="map"></div>
     </div>
-    <div class="flexrow">
-      <div class="fill"></div>
-      <form id="add_visit_form" class="shadow">
-        <div class="flexrow formrow">
-          <label class="wideformlabel"> Location: </label>
-          <select class="forminput" id="location_select" required></select>
-        </div>
-        <div class="flexrow formrow">
-          <label class="wideformlabel"> Time of Visit: </label>
-          <input class="forminput"  type="datetime-local" id="time" required>
-        </div>
-        <div class="flexrow formrow">
-          <div class="fill"></div>
-          <input type="submit" value="Add Visit" class="submit_button shadow">
-          <div class="fill"></div>
-        </div>
-      </form>
-      <div class="fill"></div>
-    </div>
-    <div class="flexrow">
-      <div class="fill"></div>
-      <div class="popupContainer">
-        <span id="registration_feedback" class="shadow popup hide"></span>
+    <div class="fill">
+      <div class="flexrow">
+        <div class="fill"></div>
+        <h1>Add a new Location Visit</h1>
+        <div class="fill"></div>
       </div>
-      <div class="fill"></div>
+      <div class="locationContainer">
+        <div id="location_info"></div>
+      </div>
+      <div class="flexrow">
+        <div class="fill"></div>
+        <form id="add_visit_form" class="shadow">
+          <div class="flexrow formrow">
+            <label class="wideformlabel"> Time of Visit: </label>
+            <input class="forminput"  type="datetime-local" id="time" required>
+          </div>
+          <div class="flexrow formrow">
+            <div class="fill"></div>
+            <input type="submit" value="Add Visit" class="submit_button shadow">
+            <div class="fill"></div>
+          </div>
+        </form>
+        <div class="fill"></div>
+      </div>
+      <div class="flexrow">
+        <div class="fill"></div>
+        <div class="popupContainer">
+          <span id="feedback" class="shadow popup hide"></span>
+        </div>
+        <div class="fill"></div>
+      </div>
     </div>
+  </div>
   <script src="/navbar.js"></script>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
-    const sleep = m => new Promise(r => setTimeout(r, m))
+    const sleep = m => new Promise(r => setTimeout(r, m));
+
+    var locationid = null;
 
     async function popup(message) {
-      $("#registration_feedback").innerHTML = message;
-      $("#registration_feedback").classList.remove("hide");
-      $("#registration_feedback").classList.add("show");
-      $("#registration_feedback").classList.remove("success");
+      $("#feedback").innerHTML = message;
+      $("#feedback").classList.remove("hide");
+      $("#feedback").classList.add("show");
+      $("#feedback").classList.remove("success");
       await sleep(5000);
-      $("#registration_feedback").classList.remove("show");
-      $("#registration_feedback").classList.add("hide");
+      $("#feedback").classList.remove("show");
+      $("#feedback").classList.add("hide");
     }
 
     async function popupSuccess(message) {
-      $("#registration_feedback").innerHTML = message;
-      $("#registration_feedback").classList.remove("hide");
-      $("#registration_feedback").classList.add("show");
-      $("#registration_feedback").classList.add("success");
+      $("#feedback").innerHTML = message;
+      $("#feedback").classList.remove("hide");
+      $("#feedback").classList.add("show");
+      $("#feedback").classList.add("success");
       await sleep(5000);
-      $("#registration_feedback").classList.remove("show");
-      $("#registration_feedback").classList.add("hide");
+      $("#feedback").classList.remove("show");
+      $("#feedback").classList.add("hide");
     }
 
     fetch("/api/getlocations", {
@@ -78,24 +86,85 @@
 
     $("#add_visit_form").onsubmit = e => {
       e.preventDefault();
-      fetch("/api/addvisit", {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          locationid: parseInt($("#location_select").options[$("#location_select").selectedIndex].value),
-          time: new Date($("#time").value).getTime() / 1000
+      if (locationid === null) {
+        popup("Select a location on the map first.");
+      } else {
+        fetch("/api/addvisit", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            locationid: locationid,
+            time: new Date($("#time").value).getTime() / 1000
+          })
+        }).then(async response => {
+          let result = await response.json();
+          if (result.success) {
+            popupSuccess(result.message);
+          } else {
+            popup(result.message)
+          }
         })
-      }).then(async response => {
-        let result = await response.json();
-        if (result.success) {
-          popupSuccess(result.message);
-        } else {
-          popup(result.message)
-        }
-      })
+      }
     }
+
+    async function initMap() {
+      var map = new google.maps.Map($("#map"), {
+        zoom: 11,
+        center: {lat: 40, lng: -75.1},
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      });
+
+      new Promise((a, r) => navigator.geolocation.getCurrentPosition(a, r, {enableHighAccuracy: true}))
+        .then(loc => map.setCenter({lat: loc.coords.latitude, lng: loc.coords.longitude}));
+fetch("/api/getlocations", {method: "POST"})
+        .then(r => r.json())
+        .then(response => {
+          if (response.success) {
+            for (let location of response.locations) {
+              let marker = new google.maps.Marker({position: location.coordinates, map: map, title: location.name, label: location.name, clickable: true});
+              google.maps.event.addListener(marker, "click", async () => {
+                locationid = location.id;
+
+                let response = await (await fetch("/api/getlocationvisits", {
+                  method: "POST",
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    locationid: location.id
+                  })
+                })).json();
+
+                let htmlContent = `
+                  <div class='flexcol'>
+                    <div class='vertical_separator'></div>
+                    <div class='flexrow'>
+                      <div class="fill"></div>
+                      <h3>
+                        ${location.name}
+                      </h3>
+                      <div class="fill"></div>
+                    </div>
+                    <div class='flexrow'>
+                      <div class="fill"></div>
+                      <p>
+                        ${location.address}
+                      </p>
+                      <div class="fill"></div>
+                    </div>
+                    <div class='vertical_separator'></div>
+                  </div>`;
+
+                $("#location_info").innerHTML = htmlContent;
+              });
+            }
+          }
+        });
+    }
+
   </script>
+  <script type="text/javascript" src="/gmaps.js?callback=initMap"></script>
 </body>
 </html>

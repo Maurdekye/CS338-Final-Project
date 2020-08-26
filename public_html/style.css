@@ -79,9 +79,6 @@ html, body {
 .map {
   border-radius: 16px;
   box-shadow: 0 0 12px 0px #CCC;
-}
-
-.contactmap {
   height: 100%;
 }
 
@@ -103,7 +100,6 @@ html, body {
 .wideformlabel {
   width: 150px;
 }
-
 
 .forminput {
   width: 200px;
