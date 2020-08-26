@@ -18,6 +18,12 @@ html, body {
   flex-flow: column;
 }
 
+.flex {
+  display: flex;
+  flex-flow: row;
+  flex-wrap: wrap;
+}
+
 .content-container {
   height: 100%;
 }
@@ -60,24 +66,50 @@ html, body {
   margin: 4px;
 }
 
+.vertical_separator {
+  height: 2px;
+  background-color: #999;
+  margin: 4px;
+}
+
 .shadow {
   box-shadow: 0 6px 16px 0 #AAA;
 }
 
-#map {
+.map {
   border-radius: 16px;
   box-shadow: 0 0 12px 0px #CCC;
+}
+
+.contactmap {
+  height: 100%;
+}
+
+.mapContainer {
+   width: 900px;
+   height: 700px;
+   padding: 40px;
+}
+
+.locationContainer {
+  flex: 1;
+  padding: 40px;
 }
 
 .formlabel {
   width: 100px;
 }
 
+.wideformlabel {
+  width: 150px;
+}
+
+
 .forminput {
   width: 150px;
 }
 
-#login {
+.submit_button {
   flex: 8;
   margin: 2px;
   padding: 8px 0px;
@@ -116,4 +148,36 @@ form {
   visibility: hidden;
   opacity: 0;
   transition: visibility 0s 0.7s, opacity 0.7s ease-in-out;
+}
+
+.table {
+  box-shadow: 0 6px 15px 0 #AAA;
+}
+
+.padding {
+  padding: 20px;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.tablecell {
+  padding: 10px;
+  border: 1px solid black;
+  margin: -1px -1px 0 0;
+  background-color: #EEE;
+}
+
+.table .tablerow:first-child .tablecell:first-child {
+  border-top-left-radius: 14px;
+}
+.table .tablerow:first-child .tablecell:last-child {
+  border-top-right-radius: 14px;
+}
+.table .tablerow:last-child .tablecell:first-child {
+  border-bottom-left-radius: 14px;
+}
+.table .tablerow:last-child .tablecell:last-child {
+  border-bottom-right-radius: 14px;
 }

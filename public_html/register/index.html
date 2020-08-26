@@ -6,24 +6,64 @@
 </head>
 <body>
   <div data-navbar></div>
-  <center>
-    <h1>Register an Account</h1>
-    <form id="register_form">
-      <label>Username: <input type="text" id="username" required></label><br>
-      <label>Email Address: <input type="email" id="email" required></label><br>
-      <label>Password: <input type="password" id="password" required></label><br>
-      <label>Re-enter Password: <input type="password" id="reenter_password" required></label><br>
-      <input type="submit" value="Register">
-    </form>
-    <p id="registration_feedback"></p>
-  </center>
+    <div class="flexrow">
+      <div class="fill"></div>
+      <h1>Register an Account</h1>
+      <div class="fill"></div>
+    </div>
+    <div class="flexrow">
+      <div class="fill"></div>
+      <form id="register_form" class="shadow">
+        <div class="flexcol">
+          <div class="flexrow formrow">
+            <label class="wideformlabel">Username: </label>
+            <input class="forminput" type="text" id="username" required>
+          </div>
+          <div class="flexrow formrow">
+            <label class="wideformlabel">Email Address: </label>
+            <input class="forminput" type="email" id="email" required>
+          </div>
+          <div class="flexrow formrow">
+            <label class="wideformlabel">Password: </label>
+            <input class="forminput" type="password" id="password" required>
+          </div>
+          <div class="flexrow formrow">
+            <label class="wideformlabel">Re-enter Password: </label>
+            <input class="forminput" type="password" id="reenter_password" required>
+          </div>
+          <div class="flexrow formrow">
+            <div class="fill"></div>
+            <input type="submit" class="submit_button shadow" value="Register">
+            <div class="fill"></div>
+          </div>
+        </div>
+      </form>
+      <div class="fill"></div>
+    </div>
+    <div class="flexrow">
+      <div class="fill"></div>
+      <div class="popupContainer">
+        <span id="registration_feedback" class="shadow popup hide"></span>
+      </div>
+      <div class="fill"></div>
+    </div>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
+    const sleep = m => new Promise(r => setTimeout(r, m))
+
+    async function popup(message) {
+      $("#registration_feedback").innerHTML = message;
+      $("#registration_feedback").classList.remove("hide");
+      $("#registration_feedback").classList.add("show");
+      await sleep(5000);
+      $("#registration_feedback").classList.remove("show");
+      $("#registration_feedback").classList.add("hide");
+    }
 
     $("#register_form").onsubmit = e => {
       e.preventDefault();
       if ($("#password").value !== $("#reenter_password").value) {
-        $("#registration_feedback").innerHTML = "Passwords do not match!";
+        popup("Passwords do not match!");
       } else {
         fetch("/api/register", {
           method: "POST",
@@ -40,7 +80,7 @@
           if (result.success) {
             window.location.href = "/";
           } else {
-            $("#registration_feedback").innerHTML = result.message;
+            popup(result.message);
           }
         });
       }

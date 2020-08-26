@@ -6,15 +6,20 @@
 </head>
 <body>
   <div data-navbar></div>
-  <center>
+  <div class="flexrow">
+    <div class="fill"></div>
     <h1>Contact Map</h1>
-    <div id="map"></div>
-  </center>
-    <div>
-      <hr>
-      <div id="location_info"></div>
-      <hr>
+    <div class="fill"></div>
+  </div>
+  <div class="flex">
+    <div class="mapContainer">
+      <div id="map" class="map contactmap"></div>
     </div>
+    <div class="locationContainer">
+      <div id="location_info"></div>
+    </div>
+  </div>
+
   <script src="/navbar.js"></script>
   <script type="text/javascript">
     var $ = document.querySelector.bind(document);
@@ -36,15 +41,6 @@
             for (let location of response.locations) {
               let marker = new google.maps.Marker({position: location.coordinates, map: map, title: location.name, label: location.name, clickable: true});
               google.maps.event.addListener(marker, "click", async () => {
-                let htmlContent = `
-                  <center>
-                    <h3>
-                      ${location.name}
-                    </h3>
-                    <p>
-                      ${location.address}
-                    </p>
-                  </center>`;
 
                 let response = await (await fetch("/api/getlocationvisits", {
                   method: "POST",
@@ -55,6 +51,13 @@
                     locationid: location.id
                   })
                 })).json();
+
+                let innerContent = `
+                  <div class='flexrow'>
+                      <div class="fill"></div>
+                      <p>No contacts registered at this location.</p>
+                      <div class="fill"></div>
+                  </div>`;
 
                 if (response.success) {
                   let entries = await Promise.all(response.visits.map(async visit => {
@@ -68,27 +71,69 @@
                       })
                     })).json();
 
-                    let nearbyVisitEntries = nearbyVisitsResponse.visits.map(v => `<li>${v.username} on ${new Date(v.time*1000).toLocaleString()}, risk: ${v.risk}</li>`);
-                    if (nearbyVisitEntries.length > 0)
-                      return `
-                        <li>
-                          During your visit on ${new Date(visit.time*1000).toLocaleString()}, you came into contact with: 
-                          <ul>
-                            ${nearbyVisitEntries.join("")}
-                          </ul>
-                        </li>`;
-                      else
-                        return '';
+                    return nearbyVisitsResponse.visits.map(v => `
+                      <div class='flexrow tablerow'>
+                        <div class='fill tablecell'>
+                          ${v.username}
+                        </div>
+                        <div class='fill tablecell'>
+                          ${new Date(v.time*1000).toLocaleString()}
+                        </div>
+                        <div class='fill tablecell'>
+                          ${new Date(visit.time*1000).toLocaleString()}
+                        </div>
+                        <div class='fill tablecell'>
+                          ${v.risk}
+                        </div>
+                      </div>`);
                   }));
 
+                  entries = entries.flat();
+
                   if (entries.length > 0) {
-                    let content = `
-                      <ul>
+                    innerContent = `
+                      <div class='flexcol table'>
+                        <div class='flexrow tablerow'>
+                          <div class='fill tablecell'>
+                            <span class='bold'>Username</span>
+                          </div>
+                          <div class='fill tablecell'>
+                            <span class='bold'>Time they visited</span>
+                          </div>
+                          <div class='fill tablecell'>
+                            <span class='bold'>Time you visited</span>
+                          </div>
+                          <div class='fill tablecell'>
+                            <span class='bold'>Risk of Transmission</span>
+                          </div>
+                        </div>
                         ${entries.join("")}
-                      </ul>`;
-                    htmlContent += content;
+                      </div>`;
                   }
                 }
+
+                let htmlContent = `
+                  <div class='flexcol'>
+                    <div class='vertical_separator'></div>
+                    <div class='flexrow'>
+                      <div class="fill"></div>
+                      <h3>
+                        ${location.name}
+                      </h3>
+                      <div class="fill"></div>
+                    </div>
+                    <div class='flexrow'>
+                      <div class="fill"></div>
+                      <p>
+                        ${location.address}
+                      </p>
+                      <div class="fill"></div>
+                    </div>
+                    <div class='padding'>
+                      ${innerContent}
+                    </div>
+                    <div class='vertical_separator'></div>
+                  </div>`;
 
                 $("#location_info").innerHTML = htmlContent;
               });
