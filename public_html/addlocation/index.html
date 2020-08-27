@@ -111,14 +111,15 @@
 
     async function initMap() {
       var map = new google.maps.Map($("#map"), {
-        zoom: 11,
+        zoom: 13,
         center: {lat: 40, lng: -75.1},
         mapTypeId: google.maps.MapTypeId.ROADMAP
       });
 
       new Promise((a, r) => navigator.geolocation.getCurrentPosition(a, r, {enableHighAccuracy: true}))
         .then(loc => map.setCenter({lat: loc.coords.latitude, lng: loc.coords.longitude}));
-fetch("/api/getlocations", {method: "POST"})
+        
+      fetch("/api/getlocations", {method: "POST"})
         .then(r => r.json())
         .then(response => {
           if (response.success) {
