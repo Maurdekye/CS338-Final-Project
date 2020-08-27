@@ -87,14 +87,16 @@ html, body {
 }
 
 .mapContainer {
-   width: 900px;
+   min-width: 600px;
    height: 700px;
    padding: 40px;
+   flex: 5;
 }
 
 .locationContainer {
-  flex: 1;
+  flex: 6;
   padding: 40px;
+  min-width: 400px;
 }
 
 .formlabel {
