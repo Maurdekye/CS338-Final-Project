@@ -1,3 +1,7 @@
+:root {
+  --table-border-radius: 14px;
+}
+
 * {
   font-family: "Trebuchet MS";
 }
@@ -168,12 +172,20 @@ form {
 }
 
 .profilepanel {
-  min-width: 800px;
   padding: 40px;
   margin: 20px;
   border-radius: 16px;
-  border: 1px solid black;
   background-color: #DDD;
+}
+
+.leftpanel {
+  min-width: 900px;
+  flex: 4;
+}
+
+.rightpanel {
+  min-width: 300px;
+  flex: 3;
 }
 
 .profileinfo * {
@@ -195,22 +207,26 @@ form {
   font-weight: bold;
 }
 
+.table {
+  border-radius: var(--table-border-radius);
+}
+
 .tablecell {
   padding: 10px;
-  border: 1px solid black;
+  border: 1px solid #999;
   margin: -1px -1px 0 0;
   background-color: #EEE;
 }
 
 .table .tablerow:first-child .tablecell:first-child {
-  border-top-left-radius: 14px;
+  border-top-left-radius: var(--table-border-radius);
 }
 .table .tablerow:first-child .tablecell:last-child {
-  border-top-right-radius: 14px;
+  border-top-right-radius: var(--table-border-radius);
 }
 .table .tablerow:last-child .tablecell:first-child {
-  border-bottom-left-radius: 14px;
+  border-bottom-left-radius: var(--table-border-radius);
 }
 .table .tablerow:last-child .tablecell:last-child {
-  border-bottom-right-radius: 14px;
+  border-bottom-right-radius: var(--table-border-radius);
 }

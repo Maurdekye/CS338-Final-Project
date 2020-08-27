@@ -7,7 +7,7 @@
 <body>
   <div data-navbar></div>
   <div class="flex">
-    <div class="fill flexcol">
+    <div class="fill flexcol leftpanel">
       <div class="flexrow profilepanel shadow">
         <div class="flexcol profileinfo">
           <span id="username"></span>
@@ -52,7 +52,7 @@
         </div>
       </div>
       <div class="fill padding">
-        <div class="flexcol table">
+        <div  id="contact_visits_list" class="flexcol table">
           <div class="flexrow tablerow">
             <div class="fill tablecell flexrow">
               <div class="fill"></div>
@@ -60,10 +60,27 @@
               <div class="fill"></div>
             </div>
           </div>
+          <div class="flexrow tablerow">
+            <div class="fill tablecell">
+              <span class="bold">Name</span>
+            </div>
+            <div class="fill tablecell">
+              <span class="bold">Location</span>
+            </div>
+            <div class="fill tablecell">
+              <span class="bold">Time you visited</span>
+            </div>
+            <div class="fill tablecell">
+              <span class="bold">Time they visted</span>
+            </div>
+            <div class="fill tablecell">
+              <span class="bold">Risk of infection</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="fill padding">
+    <div class="fill padding rightpanel">
       <div class="flexcol table">
         <div class="flexrow tablerow">
           <div class="fill tablecell flexrow">
@@ -72,8 +89,18 @@
             <div class="fill"></div>
           </div>
         </div>
-        <div class="flexcol table"></div>
         <div class="flexrow tablerow">
+          <div class="fill tablecell">
+            <span class="bold">Name</span>
+          </div>
+          <div class="fill tablecell">
+            <span class="bold">Address</span>
+          </div>
+          <div class="fill tablecell">
+            <span class="bold">Time visited</span>
+          </div>
+        </div>
+        <div id="recent_visits_list" class="flexrow tablerow">
           <div class="fill tablecell flexrow">
             <div class="fill"></div>
             <div class="smallpadding">
@@ -134,40 +161,70 @@
       }
     });
 
-    // fetch("/api/contagiousvisits", {
-    //   method: "POST"
-    // }).then(async response => {
-    //   response = await response.json();
+    fetch("/api/contagiousvisits", {
+      method: "POST"
+    }).then(async response => {
+      response = await response.json();
 
-    //   if (response.success) {
-    //     let visitHtml = `
-    //       <ul>`;
-    //     for (var visit of response.visits) {
-    //       let userlist = visit.contacts.map(c => c.username).join(", ");
-    //       visitHtml += `
-    //         <li> 
-    //           Contacts at ${visit.name} on ${new Date(visit.time * 1000).toLocaleString()}
-    //           <ul>`;
-    //       for (let contact of visit.contacts) {
-    //         visitHtml += `
-    //             <li> 
-    //               ${contact.username} at ${new Date(contact.time * 1000).toLocaleString()}, Infection risk: ${contact.contagionRisk}
-    //             </li>`;
-    //       }
-    //       visitHtml += `
-    //           </ul>
-    //         </li>`;
-    //     }
-    //     visitHtml += `
-    //       </ul>`;
-    //     visitHtml += `
-    //       <p>
-    //         Overall risk of infection: ${response.overallRisk}
-    //       </p>`;
+      if (response.success) {
+        let entries = response.visits.map(visit => {
+          return visit.contacts.map(contact => {
+            return `
+              <div class="flexrow tablerow">
+                <div class="fill tablecell">
+                  ${contact.username}
+                </div>
+                <div class="fill tablecell">
+                  ${visit.name}
+                </div>
+                <div class="fill tablecell">
+                  ${new Date(visit.time*1000).toLocaleString()}
+                </div>
+                <div class="fill tablecell">
+                  ${new Date(contact.time*1000).toLocaleString()}
+                </div>
+                <div class="fill tablecell">
+                  ${contact.contagionRisk}
+                </div>
+              </div>`;
+          });
+        }).flat();
 
-    //     $("#visit_list").innerHTML = visitHtml;
-    //   }
-    // });
+        $("#contact_visits_list").innerHTML += entries.join("");
+      }
+    });
+
+    fetch("/api/getallvisits", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        maxVisits: 20
+      })
+    }).then(async response => {
+      response = await response.json();
+
+      if (response.success) {
+        let entries = response.visits.map(visit => {
+          return `
+            <div class="flexrow tablerow">
+              <div class="fill tablecell">
+                ${visit.name}
+              </div>
+              <div class="fill tablecell">
+                ${visit.address}
+              </div>
+              <div class="fill tablecell">
+                ${new Date(visit.time*1000).toLocaleString()}
+              </div>
+            </div>`;
+        });
+
+        $("#recent_visits_list").insertAdjacentHTML('beforebegin', entries.join(""));
+      }
+    });
+
 
     $("#change_password").onsubmit = async e => {
       e.preventDefault(true);
